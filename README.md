@@ -85,3 +85,4 @@ cd client && npm run dev
 - MANAGER — team reports, task management
 - STAFF — default role
 - GUEST — reception only (can be promoted by host)
+# updated
