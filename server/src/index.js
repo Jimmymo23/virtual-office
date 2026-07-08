@@ -13,9 +13,20 @@ const server = http.createServer(app)
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+
 const io = new Server(server, {
   cors: {
-    origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174'],
+    origin: true,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+})
+
+app.use(cors({
+  origin: true,
+  credentials: true
+}))
     methods: ['GET', 'POST'],
     credentials: true,
   },
