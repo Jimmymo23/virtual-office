@@ -22,32 +22,6 @@ const io = new Server(server, {
 })
 
 app.use(cors({
-  origin:
-cd ~/Desktop/virtual-office/server && cat > src/index.js << 'EOF'
-require('dotenv').config()
-const express = require('express')
-const http = require('http')
-const { Server } = require('socket.io')
-const cors = require('cors')
-
-const authRoutes = require('./routes/auth.routes')
-const adminRoutes = require('./routes/admin.routes')
-const { initSocket } = require('./socket')
-
-const app = express()
-const server = http.createServer(app)
-
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
-
-const io = new Server(server, {
-  cors: {
-    origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174'],
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-})
-
-app.use(cors({
   origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174'],
   credentials: true
 }))
