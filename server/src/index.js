@@ -27,7 +27,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISO
 
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
-
+app.use('/api/tasks', require('./routes/tasks.routes'))
 initSocket(io)
 
 const PORT = process.env.PORT || 4000

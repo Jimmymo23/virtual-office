@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore'
 import { useOfficeStore } from '../store/officeStore'
 import { useSocket } from '../hooks/useSocket'
 import OfficeMap from '../components/office/OfficeMap'
+import TaskPanel from '../components/tasks/TaskPanel'
 import api from '../api'
 import styles from './OfficePage.module.css'
 
@@ -187,14 +188,11 @@ export default function OfficePage() {
           </div>
         )}
 
-        {activeTab === 'tasks' && (
-          <div className={styles.tasksPanel}>
-            <div className={styles.chatHead}>my tasks</div>
-            <div className={styles.emptyMsg} style={{ padding: '1.5rem 1rem' }}>
-              task system coming in phase 2 🚧
-            </div>
-          </div>
-        )}
+       {activeTab === 'tasks' && (
+  <div className={styles.tasksPanel}>
+    <TaskPanel />
+  </div>
+)}
 
         {activeTab === 'people' && (
           <div className={styles.peoplePanel}>
