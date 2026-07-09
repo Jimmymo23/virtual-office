@@ -78,11 +78,10 @@ export default function OfficeMap({ onRoomChange }) {
 
   useEffect(() => {
     const handler = (e) => {
-      const handler = (e) => {
-  const tag = document.activeElement?.tagName?.toLowerCase()
-  if (['input','textarea','select'].includes(tag)) return
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)) {
-    e.preventDefault()
+      const tag = document.activeElement?.tagName?.toLowerCase()
+      if (['input', 'textarea', 'select'].includes(tag)) return
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)) {
+        e.preventDefault()
         if (e.key === 'ArrowUp' || e.key === 'w') move(0, -1)
         if (e.key === 'ArrowDown' || e.key === 's') move(0, 1)
         if (e.key === 'ArrowLeft' || e.key === 'a') move(-1, 0)
