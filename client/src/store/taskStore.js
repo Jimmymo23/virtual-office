@@ -70,7 +70,7 @@ export const useTaskStore = create((set, get) => ({
       await tasksApi.stopTimer(taskId, note)
       set({ activeTimer: null })
       get().fetchTasks()
-      return {return { success: true }
+      return { success: true }
     } catch (err) {
       return { success: false }
     }
