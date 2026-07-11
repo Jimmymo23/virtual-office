@@ -256,11 +256,11 @@ useEffect(() => {
                       style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer'}}>
                       search
                     </button>
-                    <a href={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/admin/attendance/export?from=${attendanceFrom}&to=${attendanceTo}`}
-                      target="_blank" rel="noreferrer"
-                      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',textDecoration:'none',background:'#F1EFE8'}}>
-                      ↓ CSV
-                    </a>
+                    <a href={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/admin/attendance/export?from=${attendanceFrom}&to=${attendanceTo}&token=${localStorage.getItem('vo_token')}`}
+  target="_blank" rel="noreferrer"
+  style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',textDecoration:'none',background:'#F1EFE8'}}>
+  ↓ CSV
+</a>
                   </div>
                 </div>
                 <div style={{flex:1,overflowY:'auto'}}>
