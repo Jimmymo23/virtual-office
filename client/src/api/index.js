@@ -38,4 +38,9 @@ export const tasksApi = {
   getComments: (id) => api.get(`/tasks/${id}/comments`),
   addComment: (id, body) => api.post(`/tasks/${id}/comments`, { body }),
 }
+export const adminApi = {
+  getUsers: () => api.get('/admin/users'),
+  getAttendance: (from, to) => api.get('/admin/attendance', { params: { from, to } }),
+  exportAttendance: (from, to) => `${api.defaults.baseURL}/admin/attendance/export?from=${from}&to=${to}`,
+}
 export default api

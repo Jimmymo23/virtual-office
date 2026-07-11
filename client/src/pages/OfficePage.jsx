@@ -32,23 +32,29 @@ export default function OfficePage() {
     return () => clearInterval(t)
   }, [clockedIn])
 
-  const fetchAttendance = async () => {
-    try {
-      const res = await api.get('/admin/attendance')
-      setAttendanceLogs(res.data.logs)
-      setAllUsers(res.data.users)
-    } catch (err) {
-      console.error(err)
-    }
-  }
+ const [attendanceFrom, setAttendanceFrom] = useState('')
+const [attendanceTo, setAttendanceTo] = useState('')
 
-  useEffect(() => {
-    if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
-      fetchAttendance()
-      const interval = setInterval(fetchAttendance, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [user])
+const fetchAttendance = async (from, to) => {
+  try {
+    const params = {}
+    if (from) params.from = from
+    if (to) params.to = to
+    const res = await api.get('/admin/attendance', { params })
+    setAttendanceLogs(res.data.logs)
+    setAllUsers(res.data.users)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+useEffect(() => {
+  if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
+    fetchAttendance()
+    const interval = setInterval(() => fetchAttendance(), 30000)
+    return () => clearInterval(interval)
+  }
+}, [user])
 
   const messages = roomMessages[currentRoomId] || []
   const inThisRoom = Object.values(players).filter(p => p.roomId === currentRoomId)
@@ -214,10 +220,25 @@ export default function OfficePage() {
 
         {activeTab === 'admin' && (
           <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
-            <div style={{padding:'6px 12px',borderBottom:'0.5px solid #D3D1C7',fontSize:10,color:'#888780',fontWeight:500,display:'flex',justifyContent:'space-between'}}>
-              <span>today's attendance</span>
-              <span style={{cursor:'pointer',color:'#534AB7'}} onClick={fetchAttendance}>↻ refresh</span>
-            </div>
+            <div style={{padding:'8px 12px',borderBottom:'0.5px solid #D3D1C7',display:'flex',flexDirection:'column',gap:6}}>
+  <div style={{fontSize:10,color:'#888780',fontWeight:500}}>attendance</div>
+  <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+    <input type="date" value={attendanceFrom} onChange={e => setAttendanceFrom(e.target.value)}
+      style={{fontSize:10,padding:'3px 6px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
+    <span style={{fontSize:10,color:'#888780'}}>to</span>
+    <input type="date" value={attendanceTo} onChange={e => setAttendanceTo(e.target.value)}
+      style={{fontSize:10,padding:'3px 6px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
+    <button onClick={() => fetchAttendance(attendanceFrom, attendanceTo)}
+      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer'}}>
+      search
+    </button>
+    <a href={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/admin/attendance/export?from=${attendanceFrom}&to=${attendanceTo}`}
+      target="_blank" rel="noreferrer"
+      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',textDecoration:'none',background:'#F1EFE8'}}>
+      ↓ CSV
+    </a>
+  </div>
+</div>
             <div style={{flex:1,overflowY:'auto'}}>
               {allUsers.map(u => {
                 const log = attendanceLogs.find(l => l.userId === u.id)
