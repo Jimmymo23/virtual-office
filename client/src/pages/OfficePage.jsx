@@ -34,7 +34,16 @@ export default function OfficePage() {
 
  const [attendanceFrom, setAttendanceFrom] = useState('')
 const [attendanceTo, setAttendanceTo] = useState('')
-
+const updateUser = async (userId, data) => {
+  try {
+    const res = await api.patch(`/admin/users/${userId}`, data)
+    setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...res.data.user } : u))
+    setUserMsg('Saved!')
+    setTimeout(() => setUserMsg(''), 2000)
+  } catch (err) {
+    setUserMsg('Failed to save')
+  }
+}
 const fetchAttendance = async (from, to) => {
   try {
     const params = {}
@@ -47,7 +56,10 @@ const fetchAttendance = async (from, to) => {
     console.error(err)
   }
 }
-
+const [adminTab, setAdminTab] = useState('attendance')
+const [editingUser, setEditingUser] = useState(null)
+const [newPassword, setNewPassword] = useState('')
+const [userMsg, setUserMsg] = useState('')
 useEffect(() => {
   if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
     fetchAttendance()
@@ -220,59 +232,125 @@ useEffect(() => {
 
         {activeTab === 'admin' && (
           <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
-            <div style={{padding:'8px 12px',borderBottom:'0.5px solid #D3D1C7',display:'flex',flexDirection:'column',gap:6}}>
-  <div style={{fontSize:10,color:'#888780',fontWeight:500}}>attendance</div>
-  <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
-    <input type="date" value={attendanceFrom} onChange={e => setAttendanceFrom(e.target.value)}
-      style={{fontSize:10,padding:'3px 6px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
-    <span style={{fontSize:10,color:'#888780'}}>to</span>
-    <input type="date" value={attendanceTo} onChange={e => setAttendanceTo(e.target.value)}
-      style={{fontSize:10,padding:'3px 6px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
-    <button onClick={() => fetchAttendance(attendanceFrom, attendanceTo)}
-      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer'}}>
-      search
-    </button>
-    <a href={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/admin/attendance/export?from=${attendanceFrom}&to=${attendanceTo}`}
-      target="_blank" rel="noreferrer"
-      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',textDecoration:'none',background:'#F1EFE8'}}>
-      ↓ CSV
-    </a>
-  </div>
-</div>
-            <div style={{flex:1,overflowY:'auto'}}>
-              {allUsers.map(u => {
-                const log = attendanceLogs.find(l => l.userId === u.id)
-                const clockIn = log ? new Date(log.clockIn).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : null
-                const clockOut = log?.clockOut ? new Date(log.clockOut).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : null
-                const minutes = log?.totalMinutes || (log && !log.clockOut ? Math.round((Date.now() - new Date(log.clockIn)) / 60000) : null)
-                const hours = minutes ? `${Math.floor(minutes/60)}h ${minutes%60}m` : null
-                return (
-                  <div key={u.id} style={{padding:'8px 12px',borderBottom:'0.5px solid #D3D1C7'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
-                      <div style={{width:24,height:24,borderRadius:'50%',background:u.avatarColor,color:u.avatarTextColor,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:500,flexShrink:0}}>
-                        {u.displayName.slice(0,2).toUpperCase()}
-                      </div>
-                      <span style={{fontSize:11,fontWeight:500,color:'#2C2C2A',flex:1}}>{u.displayName}</span>
-                      <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:u.status==='ONLINE'?'#EAF3DE':'#F1EFE8',color:u.status==='ONLINE'?'#27500A':'#888780',fontWeight:500}}>{u.status?.toLowerCase()}</span>
-                    </div>
-                    {log ? (
-                      <div style={{fontSize:10,color:'#888780',paddingLeft:31,display:'flex',gap:8,flexWrap:'wrap'}}>
-                        <span>in: <b style={{color:'#2C2C2A'}}>{clockIn}</b></span>
-                        {clockOut && <span>out: <b style={{color:'#2C2C2A'}}>{clockOut}</b></span>}
-                        {hours && <span>total: <b style={{color:'#085041'}}>{hours}</b></span>}
-                        {!clockOut && <span style={{color:'#639922',fontWeight:500}}>● active</span>}
-                      </div>
-                    ) : (
-                      <div style={{fontSize:10,color:'#888780',paddingLeft:31}}>not clocked in today</div>
-                    )}
+            <div style={{display:'flex',borderBottom:'0.5px solid #D3D1C7'}}>
+              {['attendance','users'].map(t => (
+                <div key={t} onClick={() => setAdminTab(t)}
+                  style={{flex:1,padding:'8px 0',fontSize:11,textAlign:'center',cursor:'pointer',
+                    borderBottom: adminTab===t ? '2px solid #534AB7' : '2px solid transparent',
+                    color: adminTab===t ? '#534AB7' : '#888780',
+                    fontWeight: adminTab===t ? 500 : 400}}>
+                  {t}
+                </div>
+              ))}
+            </div>
+            {adminTab === 'attendance' && (
+              <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+                <div style={{padding:'8px 12px',borderBottom:'0.5px solid #D3D1C7',display:'flex',flexDirection:'column',gap:6}}>
+                  <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+                    <input type="date" value={attendanceFrom} onChange={e => setAttendanceFrom(e.target.value)}
+                      style={{fontSize:10,padding:'3px 6px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
+                    <span style={{fontSize:10,color:'#888780'}}>to</span>
+                    <input type="date" value={attendanceTo} onChange={e => setAttendanceTo(e.target.value)}
+                      style={{fontSize:10,padding:'3px 6px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
+                    <button onClick={() => fetchAttendance(attendanceFrom, attendanceTo)}
+                      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer'}}>
+                      search
+                    </button>
+                    <a href={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/admin/attendance/export?from=${attendanceFrom}&to=${attendanceTo}`}
+                      target="_blank" rel="noreferrer"
+                      style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',textDecoration:'none',background:'#F1EFE8'}}>
+                      ↓ CSV
+                    </a>
                   </div>
-                )
-              })}
-            </div>
-            <div style={{padding:'8px 12px',borderTop:'0.5px solid #D3D1C7',fontSize:10,color:'#888780',display:'flex',justifyContent:'space-between'}}>
-              <span>{allUsers.filter(u=>u.status==='ONLINE').length} online now</span>
-              <span>{attendanceLogs.length} clocked in today</span>
-            </div>
+                </div>
+                <div style={{flex:1,overflowY:'auto'}}>
+                  {allUsers.map(u => {
+                    const userLogs = attendanceLogs.filter(l => l.userId === u.id)
+                    return (
+                      <div key={u.id} style={{borderBottom:'0.5px solid #D3D1C7'}}>
+                        <div style={{padding:'6px 12px',display:'flex',alignItems:'center',gap:7}}>
+                          <div style={{width:22,height:22,borderRadius:'50%',background:u.avatarColor,color:u.avatarTextColor,display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:500,flexShrink:0}}>
+                            {u.displayName.slice(0,2).toUpperCase()}
+                          </div>
+                          <span style={{fontSize:11,fontWeight:500,color:'#2C2C2A',flex:1}}>{u.displayName}</span>
+                          <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:u.status==='ONLINE'?'#EAF3DE':'#F1EFE8',color:u.status==='ONLINE'?'#27500A':'#888780',fontWeight:500}}>{u.status?.toLowerCase()}</span>
+                        </div>
+                        {userLogs.length === 0 && (
+                          <div style={{fontSize:10,color:'#888780',paddingLeft:41,paddingBottom:6}}>no sessions</div>
+                        )}
+                        {userLogs.map(log => {
+                          const clockIn = new Date(log.clockIn).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
+                          const clockOut = log.clockOut ? new Date(log.clockOut).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : null
+                          const hours = log.totalMinutes ? `${Math.floor(log.totalMinutes/60)}h ${log.totalMinutes%60}m` : null
+                          return (
+                            <div key={log.id} style={{padding:'3px 12px 3px 41px',fontSize:10,color:'#5F5E5A',display:'flex',gap:8,flexWrap:'wrap'}}>
+                              <span style={{color:'#888780'}}>{new Date(log.clockIn).toLocaleDateString()}</span>
+                              <span>in: <b style={{color:'#2C2C2A'}}>{clockIn}</b></span>
+                              {clockOut && <span>out: <b style={{color:'#2C2C2A'}}>{clockOut}</b></span>}
+                              {hours && <span style={{color:'#085041',fontWeight:500}}>{hours}</span>}
+                              {!clockOut && <span style={{color:'#639922',fontWeight:500}}>active</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div style={{padding:'8px 12px',borderTop:'0.5px solid #D3D1C7',fontSize:10,color:'#888780',display:'flex',justifyContent:'space-between'}}>
+                  <span>{allUsers.filter(u=>u.status==='ONLINE').length} online</span>
+                  <span>{attendanceLogs.length} sessions</span>
+                </div>
+              </div>
+            )}
+            {adminTab === 'users' && (
+              <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+                {userMsg && <div style={{padding:'6px 12px',background:'#EAF3DE',fontSize:11,color:'#27500A'}}>{userMsg}</div>}
+                <div style={{flex:1,overflowY:'auto'}}>
+                  {allUsers.map(u => (
+                    <div key={u.id} style={{padding:'8px 12px',borderBottom:'0.5px solid #D3D1C7'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:6}}>
+                        <div style={{width:24,height:24,borderRadius:'50%',background:u.avatarColor,color:u.avatarTextColor,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:500,flexShrink:0}}>
+                          {u.displayName.slice(0,2).toUpperCase()}
+                        </div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:11,fontWeight:500,color:'#2C2C2A'}}>{u.displayName}</div>
+                          <div style={{fontSize:10,color:'#888780'}}>@{u.username}</div>
+                        </div>
+                        <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:'#F1EFE8',color:'#534AB7'}}>{u.role?.toLowerCase()}</span>
+                      </div>
+                      {editingUser === u.id ? (
+                        <div style={{display:'flex',flexDirection:'column',gap:5,paddingLeft:31}}>
+                          <select defaultValue={u.role} onChange={e => updateUser(u.id, { role: e.target.value })}
+                            style={{fontSize:11,padding:'4px 7px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit',background:'#fff'}}>
+                            <option value="ADMIN">admin</option>
+                            <option value="MANAGER">manager</option>
+                            <option value="STAFF">staff</option>
+                            <option value="GUEST">guest</option>
+                          </select>
+                          <div style={{display:'flex',gap:5}}>
+                            <input placeholder="new password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                              style={{flex:1,fontSize:11,padding:'4px 7px',borderRadius:6,border:'0.5px solid #D3D1C7',fontFamily:'inherit'}} />
+                            <button onClick={() => { updateUser(u.id, { password: newPassword }); setNewPassword(''); setEditingUser(null) }}
+                              style={{fontSize:10,padding:'4px 8px',borderRadius:6,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer'}}>
+                              save
+                            </button>
+                          </div>
+                          <button onClick={() => setEditingUser(null)}
+                            style={{fontSize:10,padding:'3px',borderRadius:6,border:'0.5px solid #D3D1C7',background:'transparent',cursor:'pointer',color:'#888780'}}>
+                            cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setEditingUser(u.id)}
+                          style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',background:'transparent',cursor:'pointer',color:'#534AB7',marginLeft:31}}>
+                          edit
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </aside>

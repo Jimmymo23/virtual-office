@@ -88,4 +88,24 @@ router.get('/attendance/export', requireAuth, requireRole('ADMIN', 'MANAGER'), a
     res.status(500).json({ error: 'Server error' })
   }
 })
+router.patch('/users/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const { role, password } = req.body
+    const data = {}
+    if (role) data.role = role
+    if (password) {
+      const bcrypt = require('bcryptjs')
+      data.passwordHash = await bcrypt.hash(password, 10)
+    }
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data,
+      select: { id: true, displayName: true, username: true, role: true, status: true, avatarColor: true, avatarTextColor: true }
+    })
+    res.json({ user })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
 module.exports = router
