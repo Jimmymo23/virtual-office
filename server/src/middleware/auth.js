@@ -3,8 +3,6 @@ const prisma = require('../utils/prisma')
 
 async function requireAuth(req, res, next) {
   try {
-   async function requireAuth(req, res, next) {
-  try {
     const header = req.headers.authorization
     const queryToken = req.query.token
     if (!header && !queryToken) {
