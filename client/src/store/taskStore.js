@@ -27,18 +27,17 @@ export const useTaskStore = create((set, get) => ({
       return { success: false, error: err.response?.data?.error || 'Failed to create task' }
     }
   },
-
-  updateTask: async (id, data) => {
-    try {
-      const res = await tasksApi.update(id, data)
-      set(state => ({
-        tasks: state.tasks.map(t => t.id === id ? res.data.task : t)
-      }))
-      return { success: true }
-    } catch (err) {
-      return { success: false }
-    }
-  },
+updateTask: async (id, data) => {
+  try {
+    const res = await tasksApi.update(id, data)
+    set(state => ({
+      tasks: state.tasks.map(t => t.id === id ? { ...t, ...res.data.task } : t)
+    }))
+    return { success: true, task: res.data.task }
+  } catch (err) {
+    return { success: false }
+  }
+},
 
   createSubTask: async (taskId, data) => {
     try {
