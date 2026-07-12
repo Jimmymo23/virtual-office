@@ -85,15 +85,14 @@ export default function TaskPanel() {
               </div>
               <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
                 {task.dueDate && task.status === 'DONE' && task.completedAt && (
-  new Date(task.completedAt) <= new Date(task.dueDate)
-    ? <span style={{fontSize:9,color:'#27500A',fontWeight:500}}>✅ on time</span>
-    : <span style={{fontSize:9,color:'#BA7517',fontWeight:500}}>⚠️ late</span>
-)}
-{task.dueDate && task.status !== 'DONE' && (
-  new Date(task.dueDate) < new Date()
-    ? <span style={{fontSize:9,color:'#A32D2D',fontWeight:500}}>🔴 overdue</span>
-    : <span style={{fontSize:9,color:'#888780'}}>due {new Date(task.dueDate).toLocaleDateString()}</span>
-)}
+                  new Date(task.completedAt) <= new Date(task.dueDate)
+                    ? <span style={{fontSize:9,color:'#27500A',fontWeight:500}}>✅ on time</span>
+                    : <span style={{fontSize:9,color:'#BA7517',fontWeight:500}}>⚠️ late</span>
+                )}
+                {task.dueDate && task.status !== 'DONE' && (
+                  new Date(task.dueDate) < new Date()
+                    ? <span style={{fontSize:9,color:'#A32D2D',fontWeight:500}}>🔴 overdue</span>
+                    : <span style={{fontSize:9,color:'#888780'}}>due {new Date(task.dueDate).toLocaleDateString()}</span>
                 )}
                 {totalSubtasks > 0 && (
                   <span style={{fontSize:9,color:'#888780'}}>{doneSubtasks}/{totalSubtasks} subtasks</span>
