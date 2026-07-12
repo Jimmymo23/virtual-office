@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useOfficeStore } from '../../store/officeStore'
-import styles from './OfficeMap.module.css'
-
+import { getAvatarById } from '../avatars/avatarData'
 const TILE = 48
 const COLS = 24
 const ROWS = 16
@@ -120,26 +119,26 @@ export default function OfficeMap({ onRoomChange }) {
           <div key={i} className={`${styles.furniture} ${styles[f.type]}`} style={{ left: f.x * TILE, top: f.y * TILE }} />
         ))}
 
-        {Object.entries(players)
-          .filter(([id]) => id !== user?.id)
-          .map(([id, p]) => (
-            <div key={id} className={styles.avatar} style={{ left: (p.x || 2) * TILE, top: (p.y || 2) * TILE }}>
-              <div className={styles.avatarCircle} style={{ background: p.avatarColor || '#E1F5EE', color: p.avatarTextColor || '#085041' }}>
-                {(p.displayName || 'U').slice(0, 2).toUpperCase()}
-              </div>
-              <div className={styles.avatarName}>{p.displayName?.split(' ')[0]}</div>
-              <div className={`${styles.statusDot} ${styles[p.status?.toLowerCase() || 'offline']}`} />
-            </div>
-          ))}
-
-        <div id="my-avatar" className={`${styles.avatar} ${styles.me}`} style={{ left: myPos.x * TILE, top: myPos.y * TILE }}>
-          <div className={styles.avatarCircle} style={{ background: user?.avatarColor || '#EEEDFE', color: user?.avatarTextColor || '#534AB7' }}>
-            {(user?.displayName || 'ME').slice(0, 2).toUpperCase()}
-          </div>
-          <div className={styles.avatarName}>{user?.displayName?.split(' ')[0]} (you)</div>
-          <div className={`${styles.statusDot} ${styles.online}`} />
-        </div>
+     {Object.entries(players)
+  .filter(([id]) => id !== user?.id)
+  .map(([id, p]) => {
+    const av = getAvatarById(p.avatarId || 'avatar1')
+    return (
+      <div key={id} className={styles.avatar} style={{ left: (p.x || 2) * TILE, top: (p.y || 2) * TILE }}>
+        <div className={styles.avatarCircle} style={{ background: 'transparent' }}
+          dangerouslySetInnerHTML={{ __html: av.svg }} />
+        <div className={styles.avatarName}>{p.displayName?.split(' ')[0]}</div>
+        <div className={`${styles.statusDot} ${styles[p.status?.toLowerCase() || 'offline']}`} />
       </div>
+    )
+  })}
+
+      <div id="my-avatar" className={`${styles.avatar} ${styles.me}`} style={{ left: myPos.x * TILE, top: myPos.y * TILE }}>
+  <div className={styles.avatarCircle} style={{ background: 'transparent' }}
+    dangerouslySetInnerHTML={{ __html: getAvatarById(user?.avatarId || 'avatar1').svg }} />
+  <div className={styles.avatarName}>{user?.displayName?.split(' ')[0]} (you)</div>
+  <div className={`${styles.statusDot} ${styles.online}`} />
+</div>
 
       <div className={styles.hint}>
         <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move

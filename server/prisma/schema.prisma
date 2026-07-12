@@ -66,6 +66,7 @@ model User {
   departmentId    String?
   avatarColor     String      @default("#EEEDFE")
   avatarTextColor String      @default("#534AB7")
+  avatarId        String      @default("avatar1")
   status          UserStatus  @default(OFFLINE)
   guestExpiresAt  DateTime?
   createdAt       DateTime    @default(now())

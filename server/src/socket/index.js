@@ -22,11 +22,10 @@ function initSocket(io) {
 
 
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true, status: true, role: true },
-    })
-    
+  const user = await prisma.user.findUnique({
+  where: { id: userId },
+  select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true, avatarId: true, status: true, role: true },
+})
     connectedUsers.set(userId, {
   socketId: socket.id,
   userId,
@@ -35,6 +34,7 @@ function initSocket(io) {
   displayName: user.displayName,
   avatarColor: user.avatarColor,
   avatarTextColor: user.avatarTextColor,
+  avatarId: user.avatarId || 'avatar1',
 })
     io.emit('user:connected', { user, position: { x: 2, y: 2 } })
     socket.emit('presence:snapshot', getPresenceSnapshot())

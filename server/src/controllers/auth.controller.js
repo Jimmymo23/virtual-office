@@ -9,7 +9,7 @@ function safeUser(user) {
 
 async function register(req, res) {
   try {
-    const { username, displayName, password, role } = req.body
+    const { username, displayName, password, role, avatarId } = req.body
 
     if (!username || !displayName || !password) {
       return res.status(400).json({ error: 'username, displayName and password are required' })
@@ -30,17 +30,17 @@ async function register(req, res) {
     ]
     const color = colors[Math.floor(Math.random() * colors.length)]
 
-    const user = await prisma.user.create({
-      data: {
-        username,
-        displayName,
-        passwordHash,
-        role: role || 'STAFF',
-        avatarColor: color.bg,
-        avatarTextColor: color.text,
-      },
-    })
-
+const user = await prisma.user.create({
+  data: {
+    username,
+    displayName,
+    passwordHash,
+    role: role || 'STAFF',
+    avatarColor: color.bg,
+    avatarTextColor: color.text,
+    avatarId: avatarId || 'avatar1',
+  },
+})
     const token = signToken({ userId: user.id, role: user.role })
     res.status(201).json({ token, user: safeUser(user) })
   } catch (err) {
