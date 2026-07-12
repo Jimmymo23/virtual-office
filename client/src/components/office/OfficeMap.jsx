@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useOfficeStore } from '../../store/officeStore'
 import { getAvatarById } from '../avatars/avatarData'
+import styles from './OfficeMap.module.css'
+
 const TILE = 48
 const COLS = 24
 const ROWS = 16
@@ -45,7 +47,6 @@ function isBlocked(x, y) {
 export default function OfficeMap({ onRoomChange }) {
   const user = useAuthStore(s => s.user)
   const { players, socket, currentRoomId, setCurrentRoom } = useOfficeStore()
-
   const posRef = useRef({ x: 8, y: 3 })
   const containerRef = useRef()
 
@@ -55,19 +56,14 @@ export default function OfficeMap({ onRoomChange }) {
     const nx = x + dx
     const ny = y + dy
     if (isBlocked(nx, ny)) return
-
     posRef.current = { x: nx, y: ny }
-
     const room = getRoomAt(nx, ny)
     const roomId = room?.id || null
-
     socket.emit('player:move', { x: nx, y: ny, roomId })
-
     if (roomId !== currentRoomId) {
       setCurrentRoom(roomId)
       onRoomChange?.(room)
     }
-
     const el = document.getElementById('my-avatar')
     if (el) {
       el.style.left = `${nx * TILE}px`
@@ -92,6 +88,7 @@ export default function OfficeMap({ onRoomChange }) {
   }, [move])
 
   const myPos = posRef.current
+  const myAvatar = getAvatarById(user?.avatarId || 'avatar1')
 
   return (
     <div className={styles.wrap} ref={containerRef} tabIndex={0}>
@@ -99,16 +96,8 @@ export default function OfficeMap({ onRoomChange }) {
         <div className={styles.floor} />
 
         {ROOM_DEFS.map(room => (
-          <div
-            key={room.id}
-            className={styles.room}
-            style={{
-              left: room.x * TILE, top: room.y * TILE,
-              width: room.w * TILE, height: room.h * TILE,
-              background: room.color,
-              border: `1.5px solid ${room.border}`,
-            }}
-          >
+          <div key={room.id} className={styles.room}
+            style={{ left: room.x * TILE, top: room.y * TILE, width: room.w * TILE, height: room.h * TILE, background: room.color, border: `1.5px solid ${room.border}` }}>
             <span className={styles.roomLabel} style={{ color: room.border }}>{room.name}</span>
             {room.voiceMode === 'ALWAYS_ON' && <span className={styles.voiceBadge} style={{ background: room.border + '33', color: room.border }}>voice on</span>}
             {room.voiceMode === 'MUTED' && <span className={styles.voiceBadge} style={{ background: '#F1EFE8', color: '#888780' }}>muted</span>}
@@ -119,26 +108,27 @@ export default function OfficeMap({ onRoomChange }) {
           <div key={i} className={`${styles.furniture} ${styles[f.type]}`} style={{ left: f.x * TILE, top: f.y * TILE }} />
         ))}
 
-     {Object.entries(players)
-  .filter(([id]) => id !== user?.id)
-  .map(([id, p]) => {
-    const av = getAvatarById(p.avatarId || 'avatar1')
-    return (
-      <div key={id} className={styles.avatar} style={{ left: (p.x || 2) * TILE, top: (p.y || 2) * TILE }}>
-        <div className={styles.avatarCircle} style={{ background: 'transparent' }}
-          dangerouslySetInnerHTML={{ __html: av.svg }} />
-        <div className={styles.avatarName}>{p.displayName?.split(' ')[0]}</div>
-        <div className={`${styles.statusDot} ${styles[p.status?.toLowerCase() || 'offline']}`} />
-      </div>
-    )
-  })}
+        {Object.entries(players)
+          .filter(([id]) => id !== user?.id)
+          .map(([id, p]) => {
+            const av = getAvatarById(p.avatarId || 'avatar1')
+            return (
+              <div key={id} className={styles.avatar} style={{ left: (p.x || 2) * TILE, top: (p.y || 2) * TILE }}>
+                <div className={styles.avatarCircle} style={{ background: 'transparent' }}
+                  dangerouslySetInnerHTML={{ __html: av.svg }} />
+                <div className={styles.avatarName}>{p.displayName?.split(' ')[0]}</div>
+                <div className={`${styles.statusDot} ${styles[p.status?.toLowerCase() || 'offline']}`} />
+              </div>
+            )
+          })}
 
-      <div id="my-avatar" className={`${styles.avatar} ${styles.me}`} style={{ left: myPos.x * TILE, top: myPos.y * TILE }}>
-  <div className={styles.avatarCircle} style={{ background: 'transparent' }}
-    dangerouslySetInnerHTML={{ __html: getAvatarById(user?.avatarId || 'avatar1').svg }} />
-  <div className={styles.avatarName}>{user?.displayName?.split(' ')[0]} (you)</div>
-  <div className={`${styles.statusDot} ${styles.online}`} />
-</div>
+        <div id="my-avatar" className={`${styles.avatar} ${styles.me}`} style={{ left: myPos.x * TILE, top: myPos.y * TILE }}>
+          <div className={styles.avatarCircle} style={{ background: 'transparent' }}
+            dangerouslySetInnerHTML={{ __html: myAvatar.svg }} />
+          <div className={styles.avatarName}>{user?.displayName?.split(' ')[0]} (you)</div>
+          <div className={`${styles.statusDot} ${styles.online}`} />
+        </div>
+      </div>
 
       <div className={styles.hint}>
         <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move
