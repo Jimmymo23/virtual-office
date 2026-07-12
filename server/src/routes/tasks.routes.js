@@ -2,7 +2,14 @@ const router = require('express').Router()
 const { requireAuth } = require('../middleware/auth')
 const prisma = require('../utils/prisma')
 
-// Get all tasks visible to the logged-in user
+const taskInclude = {
+  assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } },
+  subTasks: { include: { assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } } } },
+  creator: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } },
+  timeLogs: { orderBy: { startedAt: 'desc' }, take: 1 },
+  _count: { select: { comments: true } }
+}
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id
@@ -16,13 +23,7 @@ router.get('/', requireAuth, async (req, res) => {
           { visibility: 'CUSTOM', customAccess: { some: { userId } } },
         ]
       },
-      include: {
-        assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } },
-        subTasks: { include: { assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } } } },
-        creator: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } },
-        timeLogs: { where: { userId }, orderBy: { startedAt: 'desc' }, take: 1 },
-        _count: { select: { comments: true } }
-      },
+      include: taskInclude,
       orderBy: { createdAt: 'desc' }
     })
     res.json({ tasks })
@@ -32,7 +33,6 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-// Create a task
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { title, description, priority, visibility, dueDate, estimateMin, assigneeIds, roomId } = req.body
@@ -55,12 +55,7 @@ router.post('/', requireAuth, async (req, res) => {
           ]
         }
       },
-      include: {
-        assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } },
-        creator: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } },
-        subTasks: true,
-        _count: { select: { comments: true } }
-      }
+      include: taskInclude
     })
     res.status(201).json({ task })
   } catch (err) {
@@ -69,28 +64,23 @@ router.post('/', requireAuth, async (req, res) => {
   }
 })
 
-// Update a task
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
     const { title, description, priority, status, visibility, dueDate, estimateMin } = req.body
-   const task = await prisma.task.update({
-  where: { id: req.params.id },
-  data: {
-    ...(title && { title }),
-    ...(description !== undefined && { description }),
-    ...(priority && { priority }),
-    ...(status && { status }),
-    ...(status === 'DONE' && { completedAt: new Date() }),
-    ...(status && status !== 'DONE' && { completedAt: null }),
-    ...(visibility && { visibility }),
-    ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
-    ...(estimateMin !== undefined && { estimateMin }),
-  },
-        assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } },
-        subTasks: true,
-        creator: { select: { id: true, displayName: true } },
-        _count: { select: { comments: true } }
-      }
+    const task = await prisma.task.update({
+      where: { id: req.params.id },
+      data: {
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+        ...(priority && { priority }),
+        ...(status && { status }),
+        ...(status === 'DONE' && { completedAt: new Date() }),
+        ...(status && status !== 'DONE' && { completedAt: null }),
+        ...(visibility && { visibility }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(estimateMin !== undefined && { estimateMin }),
+      },
+      include: taskInclude
     })
     res.json({ task })
   } catch (err) {
@@ -99,7 +89,6 @@ router.patch('/:id', requireAuth, async (req, res) => {
   }
 })
 
-// Create a sub-task
 router.post('/:id/subtasks', requireAuth, async (req, res) => {
   try {
     const { title, priority, assigneeIds } = req.body
@@ -127,7 +116,6 @@ router.post('/:id/subtasks', requireAuth, async (req, res) => {
   }
 })
 
-// Start timer
 router.post('/:id/timer/start', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id
@@ -145,7 +133,6 @@ router.post('/:id/timer/start', requireAuth, async (req, res) => {
   }
 })
 
-// Stop timer
 router.post('/:id/timer/stop', requireAuth, async (req, res) => {
   try {
     const { note } = req.body
@@ -161,7 +148,6 @@ router.post('/:id/timer/stop', requireAuth, async (req, res) => {
   }
 })
 
-// Get comments
 router.get('/:id/comments', requireAuth, async (req, res) => {
   try {
     const comments = await prisma.message.findMany({
@@ -176,7 +162,6 @@ router.get('/:id/comments', requireAuth, async (req, res) => {
   }
 })
 
-// Add comment
 router.post('/:id/comments', requireAuth, async (req, res) => {
   try {
     const { body } = req.body
