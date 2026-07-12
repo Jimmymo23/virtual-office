@@ -73,18 +73,19 @@ router.post('/', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
     const { title, description, priority, status, visibility, dueDate, estimateMin } = req.body
-    const task = await prisma.task.update({
-      where: { id: req.params.id },
-      data: {
-        ...(title && { title }),
-        ...(description !== undefined && { description }),
-        ...(priority && { priority }),
-        ...(status && { status }),
-        ...(visibility && { visibility }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
-        ...(estimateMin !== undefined && { estimateMin }),
-      },
-      include: {
+   const task = await prisma.task.update({
+  where: { id: req.params.id },
+  data: {
+    ...(title && { title }),
+    ...(description !== undefined && { description }),
+    ...(priority && { priority }),
+    ...(status && { status }),
+    ...(status === 'DONE' && { completedAt: new Date() }),
+    ...(status && status !== 'DONE' && { completedAt: null }),
+    ...(visibility && { visibility }),
+    ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+    ...(estimateMin !== undefined && { estimateMin }),
+  },
         assignees: { include: { user: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } } },
         subTasks: true,
         creator: { select: { id: true, displayName: true } },
