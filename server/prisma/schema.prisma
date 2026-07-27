@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum Role {
+  SUPERADMIN
   ADMIN
   MANAGER
   STAFF
@@ -19,6 +20,12 @@ enum UserStatus {
   AWAY
   BUSY
   OFFLINE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum TaskStatus {
@@ -57,29 +64,43 @@ enum ChannelType {
   THREAD
 }
 
-model User {
-  id              String      @id @default(uuid())
-  username        String      @unique
-  passwordHash    String
-  displayName     String
-  role            Role        @default(STAFF)
-  departmentId    String?
-  avatarColor     String      @default("#EEEDFE")
-  avatarTextColor String      @default("#534AB7")
-  avatarId        String      @default("avatar1")
-  status          UserStatus  @default(OFFLINE)
-  guestExpiresAt  DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+model Office {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
 
-  department      Department?    @relation(fields: [departmentId], references: [id])
-  attendanceLogs  AttendanceLog[]
-  createdTasks    Task[]         @relation("TaskCreator")
-  assignedTasks   TaskAssignee[]
-  timeLogs        TimeLog[]
-  sentMessages    Message[]
-  promotedGuests  GuestPromotion[] @relation("PromotedBy")
-  guestPromotion  GuestPromotion?  @relation("GuestUser")
+  users User[]
+  rooms Room[]
+  tasks Task[]
+}
+
+model User {
+  id              String         @id @default(uuid())
+  username        String         @unique
+  passwordHash    String
+  displayName    String
+  role            Role           @default(STAFF)
+  approvalStatus  ApprovalStatus @default(PENDING)
+  officeId        String?
+  departmentId    String?
+  avatarColor     String         @default("#EEEDFE")
+  avatarTextColor String         @default("#534AB7")
+  avatarId        String         @default("avatar1")
+  status          UserStatus     @default(OFFLINE)
+  guestExpiresAt  DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  office         Office?          @relation(fields: [officeId], references: [id])
+  department     Department?      @relation(fields: [departmentId], references: [id])
+  attendanceLogs AttendanceLog[]
+  createdTasks   Task[]           @relation("TaskCreator")
+  assignedTasks  TaskAssignee[]
+  timeLogs       TimeLog[]
+  sentMessages   Message[]
+  promotedGuests GuestPromotion[] @relation("PromotedBy")
+  guestPromotion GuestPromotion?  @relation("GuestUser")
 }
 
 model Department {
@@ -92,35 +113,38 @@ model Department {
 model AttendanceLog {
   id           String    @id @default(uuid())
   userId       String
+  officeId     String?
   clockIn      DateTime  @default(now())
   clockOut     DateTime?
   totalMinutes Int?
   date         DateTime  @default(now()) @db.Date
   createdAt    DateTime  @default(now())
 
-  user         User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Room {
-  id             String    @id @default(uuid())
-  name           String
-  voiceMode      VoiceMode @default(MUTED)
-  hasVideo       Boolean   @default(false)
-  capacity       Int       @default(10)
-  isLockable     Boolean   @default(false)
-  guestAccessible Boolean  @default(false)
-  lockedById     String?
-  templateId     String?
-  zoneX          Int       @default(0)
-  zoneY          Int       @default(0)
-  zoneW          Int       @default(5)
-  zoneH          Int       @default(5)
-  color          String    @default("#E1F5EE")
-  createdAt      DateTime  @default(now())
+  id              String    @id @default(uuid())
+  name            String
+  officeId        String?
+  voiceMode       VoiceMode @default(MUTED)
+  hasVideo        Boolean   @default(false)
+  capacity        Int       @default(10)
+  isLockable      Boolean   @default(false)
+  guestAccessible Boolean   @default(false)
+  lockedById      String?
+  templateId      String?
+  zoneX           Int       @default(0)
+  zoneY           Int       @default(0)
+  zoneW           Int       @default(5)
+  zoneH           Int       @default(5)
+  color           String    @default("#E1F5EE")
+  createdAt       DateTime  @default(now())
 
-  tasks          Task[]
-  messages       Message[]
-  template       RoomTemplate? @relation(fields: [templateId], references: [id])
+  office   Office?       @relation(fields: [officeId], references: [id])
+  tasks    Task[]
+  messages Message[]
+  template RoomTemplate? @relation(fields: [templateId], references: [id])
 }
 
 model RoomTemplate {
@@ -134,25 +158,27 @@ model RoomTemplate {
   tileData    Json
   createdAt   DateTime  @default(now())
 
-  rooms       Room[]
+  rooms Room[]
 }
 
 model MapTile {
-  id          String   @id @default(uuid())
-  x           Int
-  y           Int
-  layer       String
-  tileType    String
-  assetKey    String?
-  roomId      String?
-  mapVersion  Int      @default(1)
+  id         String  @id @default(uuid())
+  officeId   String?
+  x          Int
+  y          Int
+  layer      String
+  tileType   String
+  assetKey   String?
+  roomId     String?
+  mapVersion Int     @default(1)
 
-  @@unique([x, y, layer])
+  @@unique([officeId, x, y, layer])
 }
 
 model Task {
   id           String       @id @default(uuid())
   parentTaskId String?
+  officeId     String?
   title        String
   description  String?
   status       TaskStatus   @default(BACKLOG)
@@ -166,14 +192,15 @@ model Task {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  creator      User           @relation("TaskCreator", fields: [creatorId], references: [id])
-  room         Room?          @relation(fields: [roomId], references: [id])
-  parentTask   Task?          @relation("SubTasks", fields: [parentTaskId], references: [id])
-  subTasks     Task[]         @relation("SubTasks")
+  office       Office?            @relation(fields: [officeId], references: [id])
+  creator      User               @relation("TaskCreator", fields: [creatorId], references: [id])
+  room         Room?              @relation(fields: [roomId], references: [id])
+  parentTask   Task?              @relation("SubTasks", fields: [parentTaskId], references: [id])
+  subTasks     Task[]             @relation("SubTasks")
   assignees    TaskAssignee[]
   timeLogs     TimeLog[]
   customAccess TaskCustomAccess[]
-  comments     Message[]      @relation("TaskComments")
+  comments     Message[]          @relation("TaskComments")
 }
 
 model TaskAssignee {
@@ -181,8 +208,8 @@ model TaskAssignee {
   userId     String
   assignedAt DateTime @default(now())
 
-  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 
   @@id([taskId, userId])
 }
@@ -191,7 +218,7 @@ model TaskCustomAccess {
   taskId String
   userId String
 
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@id([taskId, userId])
 }
@@ -207,13 +234,14 @@ model TimeLog {
   isManual  Boolean   @default(false)
   createdAt DateTime  @default(now())
 
-  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id])
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Message {
   id          String      @id @default(uuid())
   senderId    String
+  officeId    String?
   channelType ChannelType
   channelId   String
   parentMsgId String?
@@ -224,19 +252,19 @@ model Message {
   sentAt      DateTime    @default(now())
   editedAt    DateTime?
 
-  sender      User        @relation(fields: [senderId], references: [id])
-  room        Room?       @relation(fields: [roomId], references: [id])
-  task        Task?       @relation("TaskComments", fields: [taskId], references: [id])
+  sender User  @relation(fields: [senderId], references: [id])
+  room   Room? @relation(fields: [roomId], references: [id])
+  task   Task? @relation("TaskComments", fields: [taskId], references: [id])
 }
 
 model GuestPromotion {
-  id            String    @id @default(uuid())
-  guestId       String    @unique
-  promotedById  String
-  roomAccess    String[]
-  expiresAt     DateTime?
-  createdAt     DateTime  @default(now())
+  id           String    @id @default(uuid())
+  guestId      String    @unique
+  promotedById String
+  roomAccess   String[]
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
 
-  guest         User      @relation("GuestUser", fields: [guestId], references: [id])
-  promotedBy    User      @relation("PromotedBy", fields: [promotedById], references: [id])
+  guest      User @relation("GuestUser", fields: [guestId], references: [id])
+  promotedBy User @relation("PromotedBy", fields: [promotedById], references: [id])
 }

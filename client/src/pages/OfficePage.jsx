@@ -44,7 +44,14 @@ const updateUser = async (userId, data) => {
     setUserMsg('Failed to save')
   }
 }
-const fetchAttendance = async (from, to) => {
+const fetchPending = async () => {
+    try {
+      const res = await api.get('/admin/pending')
+      setPendingUsers(res.data.pending)
+    } catch (err) { console.error(err) }
+  }
+
+  const fetchAttendance = async (from, to) => {
   try {
     const params = {}
     if (from) params.from = from
@@ -57,12 +64,14 @@ const fetchAttendance = async (from, to) => {
   }
 }
 const [adminTab, setAdminTab] = useState('attendance')
+  const [pendingUsers, setPendingUsers] = useState([])
 const [editingUser, setEditingUser] = useState(null)
 const [newPassword, setNewPassword] = useState('')
 const [userMsg, setUserMsg] = useState('')
 useEffect(() => {
   if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
     fetchAttendance()
+    fetchPending()
     const interval = setInterval(() => fetchAttendance(), 30000)
     return () => clearInterval(interval)
   }
@@ -233,7 +242,7 @@ useEffect(() => {
         {activeTab === 'admin' && (
           <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
             <div style={{display:'flex',borderBottom:'0.5px solid #D3D1C7'}}>
-              {['attendance','users'].map(t => (
+              {['attendance','users','approvals'].map(t => (
                 <div key={t} onClick={() => setAdminTab(t)}
                   style={{flex:1,padding:'8px 0',fontSize:11,textAlign:'center',cursor:'pointer',
                     borderBottom: adminTab===t ? '2px solid #534AB7' : '2px solid transparent',
@@ -309,6 +318,36 @@ useEffect(() => {
                   <span>{allUsers.filter(u=>u.status==='ONLINE').length} online</span>
                   <span>{attendanceLogs.length} sessions</span>
                 </div>
+              </div>
+            )}
+            {adminTab === 'approvals' && (
+              <div style={{flex:1,overflowY:'auto'}}>
+                {pendingUsers.length === 0 && (
+                  <div style={{padding:'2rem 1rem',fontSize:11,color:'#888780',textAlign:'center'}}>no pending requests</div>
+                )}
+                {pendingUsers.map(u => (
+                  <div key={u.id} style={{padding:'10px 12px',borderBottom:'0.5px solid #D3D1C7'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:6}}>
+                      <div style={{width:24,height:24,borderRadius:'50%',background:u.avatarColor,color:u.avatarTextColor,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:500}}>
+                        {u.displayName.slice(0,2).toUpperCase()}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:11,fontWeight:500,color:'#2C2C2A'}}>{u.displayName}</div>
+                        <div style={{fontSize:10,color:'#888780'}}>@{u.username} · {new Date(u.createdAt).toLocaleDateString()}</div>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:6,paddingLeft:31}}>
+                      <button onClick={async () => { await api.post(`/admin/pending/${u.id}/approve`); fetchPending() }}
+                        style={{fontSize:10,padding:'4px 12px',borderRadius:6,border:'none',background:'#2E7D32',color:'#fff',cursor:'pointer'}}>
+                        approve
+                      </button>
+                      <button onClick={async () => { await api.post(`/admin/pending/${u.id}/reject`); fetchPending() }}
+                        style={{fontSize:10,padding:'4px 12px',borderRadius:6,border:'0.5px solid #F09595',background:'#FCEBEB',color:'#A32D2D',cursor:'pointer'}}>
+                        reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {adminTab === 'users' && (

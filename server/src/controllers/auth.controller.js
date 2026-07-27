@@ -9,11 +9,17 @@ function safeUser(user) {
 
 async function register(req, res) {
   try {
-    const { username, displayName, password, role, avatarId } = req.body
+    const { username, displayName, password, avatarId, officeId } = req.body
 
     if (!username || !displayName || !password) {
       return res.status(400).json({ error: 'username, displayName and password are required' })
     }
+    if (!officeId) {
+      return res.status(400).json({ error: 'Please select an office' })
+    }
+
+    const office = await prisma.office.findUnique({ where: { id: officeId } })
+    if (!office) return res.status(400).json({ error: 'Office not found' })
 
     const existing = await prisma.user.findUnique({ where: { username } })
     if (existing) return res.status(409).json({ error: 'Username already taken' })
@@ -30,19 +36,21 @@ async function register(req, res) {
     ]
     const color = colors[Math.floor(Math.random() * colors.length)]
 
-const user = await prisma.user.create({
-  data: {
-    username,
-    displayName,
-    passwordHash,
-    role: role || 'STAFF',
-    avatarColor: color.bg,
-    avatarTextColor: color.text,
-    avatarId: avatarId || 'avatar1',
-  },
-})
-    const token = signToken({ userId: user.id, role: user.role })
-    res.status(201).json({ token, user: safeUser(user) })
+    const user = await prisma.user.create({
+      data: {
+        username,
+        displayName,
+        passwordHash,
+        role: 'STAFF',
+        approvalStatus: 'PENDING',
+        officeId,
+        avatarColor: color.bg,
+        avatarTextColor: color.text,
+        avatarId: avatarId || 'avatar1',
+      },
+    })
+
+    res.status(201).json({ pending: true, message: 'Account created. Waiting for admin approval.' })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
@@ -59,24 +67,30 @@ async function login(req, res) {
     const user = await prisma.user.findUnique({ where: { username } })
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
 
+    const valid = await bcrypt.compare(password, user.passwordHash)
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials' })
+
+    if (user.approvalStatus === 'PENDING') {
+      return res.status(403).json({ error: 'Your account is waiting for admin approval', pending: true })
+    }
+    if (user.approvalStatus === 'REJECTED') {
+      return res.status(403).json({ error: 'Your account request was rejected' })
+    }
+
     if (user.guestExpiresAt && new Date() > user.guestExpiresAt) {
       return res.status(401).json({ error: 'Guest session expired' })
     }
-
-    const valid = await bcrypt.compare(password, user.passwordHash)
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' })
 
     await prisma.user.update({
       where: { id: user.id },
       data: { status: 'ONLINE' },
     })
 
- const log = await prisma.attendanceLog.create({
-  data: { userId: user.id },
-})
-console.log('Attendance log created:', log.id)
+    await prisma.attendanceLog.create({
+      data: { userId: user.id, officeId: user.officeId },
+    })
 
-    const token = signToken({ userId: user.id, role: user.role })
+    const token = signToken({ userId: user.id, role: user.role, officeId: user.officeId })
     res.json({ token, user: safeUser({ ...user, status: 'ONLINE' }) })
   } catch (err) {
     console.error(err)
@@ -130,4 +144,17 @@ async function me(req, res) {
   res.json({ user: safeUser(req.user) })
 }
 
-module.exports = { register, login, logout, me }
+async function listOffices(req, res) {
+  try {
+    const offices = await prisma.office.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    })
+    res.json({ offices })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
+module.exports = { register, login, logout, me, listOffices }
