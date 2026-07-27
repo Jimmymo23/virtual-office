@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTaskStore } from '../../store/taskStore'
-import { adminApi } from '../../api'
+import api from '../../api'
 
 export default function CreateTaskModal({ onClose }) {
   const { createTask } = useTaskStore()
@@ -18,8 +18,8 @@ export default function CreateTaskModal({ onClose }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    adminApi.getUsers().then(res => setUsers(res.data.users)).catch(() => {})
-  }, [])
+  api.get('/admin/users/assignable').then(res => setUsers(res.data.users)).catch(() => {})
+}, [])
 
   const toggleUser = (userId) => {
     setSelectedUsers(prev =>

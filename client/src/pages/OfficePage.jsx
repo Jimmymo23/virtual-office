@@ -256,11 +256,20 @@ useEffect(() => {
                       style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer'}}>
                       search
                     </button>
-                    <a href={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/admin/attendance/export?from=${attendanceFrom}&to=${attendanceTo}&token=${localStorage.getItem('vo_token')}`}
-  target="_blank" rel="noreferrer"
-  style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',textDecoration:'none',background:'#F1EFE8'}}>
+                    <button onClick={async () => {
+  try {
+    const res = await api.get('/admin/attendance/export', { params: { from: attendanceFrom, to: attendanceTo }, responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'attendance.csv'
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (e) { console.error(e) }
+}}
+  style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',color:'#2C2C2A',background:'#F1EFE8',cursor:'pointer'}}>
   ↓ CSV
-</a>
+</button>
                   </div>
                 </div>
                 <div style={{flex:1,overflowY:'auto'}}>
