@@ -69,7 +69,7 @@ const [editingUser, setEditingUser] = useState(null)
 const [newPassword, setNewPassword] = useState('')
 const [userMsg, setUserMsg] = useState('')
 useEffect(() => {
-  if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
+  if (['SUPERADMIN', 'ADMIN', 'MANAGER'].includes(user?.role)) {
     fetchAttendance()
     fetchPending()
     const interval = setInterval(() => fetchAttendance(), 30000)
@@ -79,7 +79,7 @@ useEffect(() => {
 
   const messages = roomMessages[currentRoomId] || []
   const inThisRoom = Object.values(players).filter(p => p.roomId === currentRoomId)
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+  const isAdmin = ['SUPERADMIN', 'ADMIN', 'MANAGER'].includes(user?.role)
   const tabs = isAdmin ? ['chat', 'tasks', 'people', 'admin'] : ['chat', 'tasks', 'people']
 
   const sendMessage = () => {
