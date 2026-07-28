@@ -2,6 +2,7 @@ const { verifyToken } = require('../utils/jwt')
 const prisma = require('../utils/prisma')
 
 const connectedUsers = new Map()
+const connectionCounts = new Map()
 
 function initSocket(io) {
   io.use((socket, next) => {
@@ -20,92 +21,111 @@ function initSocket(io) {
   io.on('connection', async (socket) => {
     const userId = socket.userId
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true, avatarId: true, status: true, role: true, officeId: true, approvalStatus: true },
+    })
 
+    if (!user || user.approvalStatus !== 'APPROVED' || !user.officeId) {
+      socket.disconnect(true)
+      return
+    }
 
-  const user = await prisma.user.findUnique({
-  where: { id: userId },
-  select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true, avatarId: true, status: true, role: true },
-})
-    connectedUsers.set(userId, {
-  socketId: socket.id,
-  userId,
-  roomId: null,
-  position: { x: 2, y: 2 },
-  displayName: user.displayName,
-  avatarColor: user.avatarColor,
-  avatarTextColor: user.avatarTextColor,
-  avatarId: user.avatarId || 'avatar1',
-})
-    io.emit('user:connected', { user, position: { x: 2, y: 2 } })
-    socket.emit('presence:snapshot', getPresenceSnapshot())
+    const officeChannel = 'office:' + user.officeId
+    socket.officeId = user.officeId
+    socket.join(officeChannel)
+
+    const prevCount = connectionCounts.get(userId) || 0
+    connectionCounts.set(userId, prevCount + 1)
+
+    if (prevCount === 0) {
+      connectedUsers.set(userId, {
+        socketId: socket.id,
+        userId,
+        officeId: user.officeId,
+        roomId: null,
+        x: 8,
+        y: 3,
+        displayName: user.displayName,
+        avatarColor: user.avatarColor,
+        avatarTextColor: user.avatarTextColor,
+        avatarId: user.avatarId || 'avatar1',
+        status: user.status,
+      })
+      io.to(officeChannel).emit('user:connected', { user, position: { x: 8, y: 3 } })
+    } else {
+      const state = connectedUsers.get(userId)
+      if (state) state.socketId = socket.id
+    }
+
+    socket.emit('presence:snapshot', getPresenceSnapshot(user.officeId))
 
     socket.on('player:move', async ({ x, y, roomId }) => {
       const state = connectedUsers.get(userId)
       if (!state) return
 
       const prevRoomId = state.roomId
-      state.position = { x, y }
+      state.x = x
+      state.y = y
 
       if (roomId !== prevRoomId) {
         if (prevRoomId) {
-          socket.leave(`room:${prevRoomId}`)
-          socket.to(`room:${prevRoomId}`).emit('room:player_left', { userId })
+          socket.leave('room:' + state.officeId + ':' + prevRoomId)
+          socket.to('room:' + state.officeId + ':' + prevRoomId).emit('room:player_left', { userId })
         }
         if (roomId) {
-          if (user.role === 'GUEST') {
-            const room = await prisma.room.findUnique({ where: { id: roomId } })
-            const promotion = await prisma.guestPromotion.findUnique({ where: { guestId: userId } })
-            const allowed = room?.guestAccessible ||
-              (promotion && promotion.roomAccess.includes(roomId) && (!promotion.expiresAt || new Date() < promotion.expiresAt))
-            if (!allowed) {
-              socket.emit('room:access_denied', { roomId })
-              return
-            }
-          }
-          socket.join(`room:${roomId}`)
-          socket.to(`room:${roomId}`).emit('room:player_entered', { userId, user })
+          socket.join('room:' + state.officeId + ':' + roomId)
+          socket.to('room:' + state.officeId + ':' + roomId).emit('room:player_entered', { userId, user })
           socket.emit('room:joined', { roomId })
         }
         state.roomId = roomId || null
       }
 
-      io.emit('player:moved', { userId, x, y, roomId })
+      io.to(officeChannel).emit('player:moved', { userId, x, y, roomId })
     })
 
     socket.on('status:change', async ({ status }) => {
       const valid = ['ONLINE', 'AWAY', 'BUSY', 'OFFLINE']
       if (!valid.includes(status)) return
       await prisma.user.update({ where: { id: userId }, data: { status } })
-      io.emit('user:status_changed', { userId, status })
+      const state = connectedUsers.get(userId)
+      if (state) state.status = status
+      io.to(officeChannel).emit('user:status_changed', { userId, status })
     })
 
     socket.on('room:send_message', async ({ roomId, body, parentMsgId }) => {
-      if (!body?.trim()) return
+      if (!body || !body.trim()) return
       const state = connectedUsers.get(userId)
-      if (state?.roomId !== roomId) return
+      if (!state || state.roomId !== roomId) return
 
       const msg = await prisma.message.create({
         data: {
           senderId: userId,
+          officeId: state.officeId,
           channelType: 'ROOM',
           channelId: roomId,
-          roomId,
+          roomId: null,
           parentMsgId: parentMsgId || null,
           body: body.trim(),
         },
         include: { sender: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } },
       })
 
-      io.to(`room:${roomId}`).emit('room:new_message', { message: msg })
+      msg.roomId = roomId
+      io.to('room:' + state.officeId + ':' + roomId).emit('room:new_message', { message: msg })
     })
 
     socket.on('dm:send', async ({ toUserId, body }) => {
-      if (!body?.trim()) return
-      const channelId = [userId, toUserId].sort().join(':')
+      if (!body || !body.trim()) return
+      const state = connectedUsers.get(userId)
+      const target = connectedUsers.get(toUserId)
+      if (target && state && target.officeId !== state.officeId) return
 
+      const channelId = [userId, toUserId].sort().join(':')
       const msg = await prisma.message.create({
         data: {
           senderId: userId,
+          officeId: state ? state.officeId : null,
           channelType: 'DM',
           channelId,
           body: body.trim(),
@@ -113,50 +133,21 @@ function initSocket(io) {
         include: { sender: { select: { id: true, displayName: true, avatarColor: true, avatarTextColor: true } } },
       })
 
-      const toUser = connectedUsers.get(toUserId)
-      if (toUser) {
-        io.to(toUser.socketId).emit('dm:new_message', { message: msg, channelId })
-      }
+      if (target) io.to(target.socketId).emit('dm:new_message', { message: msg, channelId })
       socket.emit('dm:new_message', { message: msg, channelId })
     })
 
-    socket.on('room:knock', async ({ roomId }) => {
-      const room = await prisma.room.findUnique({ where: { id: roomId } })
-      if (!room?.lockedById) return
-      const host = connectedUsers.get(room.lockedById)
-      if (host) {
-        io.to(host.socketId).emit('room:knock_received', { fromUserId: userId, fromUser: user, roomId })
-      }
-    })
-
-    socket.on('room:lock', async ({ roomId, lock }) => {
-      await prisma.room.update({
-        where: { id: roomId },
-        data: { lockedById: lock ? userId : null },
-      })
-      io.emit('room:lock_changed', { roomId, locked: lock, byUserId: lock ? userId : null })
-    })
-
-    socket.on('guest:promote', async ({ guestId, roomAccess, expiresAt }) => {
-      if (!['ADMIN', 'MANAGER', 'STAFF'].includes(socket.userRole)) return
-      const existing = await prisma.guestPromotion.findUnique({ where: { guestId } })
-      const data = { promotedById: userId, roomAccess: roomAccess || [], expiresAt: expiresAt ? new Date(expiresAt) : null }
-      if (existing) {
-        await prisma.guestPromotion.update({ where: { guestId }, data })
-      } else {
-        await prisma.guestPromotion.create({ data: { guestId, ...data } })
-      }
-      const guestSocket = connectedUsers.get(guestId)
-      if (guestSocket) {
-        io.to(guestSocket.socketId).emit('guest:promoted', { roomAccess, expiresAt })
-      }
-      io.emit('user:badge_changed', { userId: guestId, badge: 'TEMP' })
-    })
-
     socket.on('disconnect', async () => {
+      const remaining = (connectionCounts.get(userId) || 1) - 1
+      if (remaining > 0) {
+        connectionCounts.set(userId, remaining)
+        return
+      }
+      connectionCounts.delete(userId)
+
       const state = connectedUsers.get(userId)
-      if (state?.roomId) {
-        socket.to(`room:${state.roomId}`).emit('room:player_left', { userId })
+      if (state && state.roomId) {
+        socket.to('room:' + state.officeId + ':' + state.roomId).emit('room:player_left', { userId })
       }
       connectedUsers.delete(userId)
 
@@ -189,15 +180,15 @@ function initSocket(io) {
         }).catch(() => {})
       }
 
-      io.emit('user:disconnected', { userId })
+      io.to(officeChannel).emit('user:disconnected', { userId })
     })
   })
 }
 
-function getPresenceSnapshot() {
+function getPresenceSnapshot(officeId) {
   const snapshot = []
-  for (const [userId, state] of connectedUsers.entries()) {
-    snapshot.push(state)
+  for (const entry of connectedUsers.values()) {
+    if (entry.officeId === officeId) snapshot.push(entry)
   }
   return snapshot
 }
