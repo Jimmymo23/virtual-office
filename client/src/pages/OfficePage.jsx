@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useOfficeStore } from '../store/officeStore'
 import { useSocket } from '../hooks/useSocket'
+import { useVoice } from '../hooks/useVoice'
 import OfficeMap from '../components/office/OfficeMap'
 import TaskPanel from '../components/tasks/TaskPanel'
 import OfficesPanel from '../components/admin/OfficesPanel'
@@ -21,6 +22,7 @@ export default function OfficePage() {
   const [allUsers, setAllUsers] = useState([])
 
   useSocket()
+  const voice = useVoice(currentRoomId)
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -167,6 +169,19 @@ useEffect(() => {
           <span className={styles.currentRoom}>{currentRoom?.name || 'office lobby'}</span>
           {currentRoom?.voiceMode && (
             <span className={styles.modeBadge}>{currentRoom.voiceMode === 'ALWAYS_ON' ? 'voice on' : currentRoom.voiceMode === 'MUTED' ? 'muted' : 'push-to-talk'}</span>
+          )}
+          {voice.isVoiceRoom && voice.inVoiceCall && (
+            <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,background:'#EAF3DE',color:'#27500A',fontWeight:500,display:'flex',alignItems:'center',gap:4}}>
+              🎙️ {voice.peerCount} in call
+              <button onClick={voice.toggleMute} style={{border:'none',background:'none',cursor:'pointer',fontSize:10,color:'#27500A',padding:0}}>
+                {voice.isMuted ? '🔇' : '🔊'}
+              </button>
+            </span>
+          )}
+          {voice.isVoiceRoom && voice.micError && (
+            <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,background:'#FCEBEB',color:'#A32D2D'}}>
+              mic blocked
+            </span>
           )}
           <div className={styles.spacer} />
           <span className={styles.topUser}>{user?.displayName}</span>

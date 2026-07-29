@@ -70,12 +70,15 @@ function initSocket(io) {
 
       if (roomId !== prevRoomId) {
         if (prevRoomId) {
-          socket.leave('room:' + state.officeId + ':' + prevRoomId)
-          socket.to('room:' + state.officeId + ':' + prevRoomId).emit('room:player_left', { userId })
+          const oldChannel = 'room:' + state.officeId + ':' + prevRoomId
+          socket.leave(oldChannel)
+          socket.to(oldChannel).emit('room:player_left', { userId })
+          socket.to(oldChannel).emit('voice:peer_left', { userId })
         }
         if (roomId) {
-          socket.join('room:' + state.officeId + ':' + roomId)
-          socket.to('room:' + state.officeId + ':' + roomId).emit('room:player_entered', { userId, user })
+          const newChannel = 'room:' + state.officeId + ':' + roomId
+          socket.join(newChannel)
+          socket.to(newChannel).emit('room:player_entered', { userId, user })
           socket.emit('room:joined', { roomId })
         }
         state.roomId = roomId || null
@@ -137,6 +140,42 @@ function initSocket(io) {
       socket.emit('dm:new_message', { message: msg, channelId })
     })
 
+    // ---- WebRTC voice signaling ----
+    // A peer that just joined a voice room asks who else is already there,
+    // then sends an offer to each. The relay never inspects SDP/ICE content.
+
+    socket.on('voice:join', ({ roomId }) => {
+      const state = connectedUsers.get(userId)
+      if (!state || state.roomId !== roomId) return
+      const channel = 'room:' + state.officeId + ':' + roomId
+
+      const peers = []
+      const room = io.sockets.adapter.rooms.get(channel)
+      if (room) {
+        for (const sockId of room) {
+          if (sockId === socket.id) continue
+          const s = io.sockets.sockets.get(sockId)
+          if (s && s.userId !== userId) peers.push(s.userId)
+        }
+      }
+      socket.emit('voice:existing_peers', { peers })
+    })
+
+    socket.on('voice:signal', ({ toUserId, signal }) => {
+      const target = connectedUsers.get(toUserId)
+      if (!target) return
+      const state = connectedUsers.get(userId)
+      if (!state || target.officeId !== state.officeId) return
+      io.to(target.socketId).emit('voice:signal', { fromUserId: userId, signal })
+    })
+
+    socket.on('voice:leave', ({ roomId }) => {
+      const state = connectedUsers.get(userId)
+      if (!state) return
+      const channel = 'room:' + state.officeId + ':' + roomId
+      socket.to(channel).emit('voice:peer_left', { userId })
+    })
+
     socket.on('disconnect', async () => {
       const remaining = (connectionCounts.get(userId) || 1) - 1
       if (remaining > 0) {
@@ -147,7 +186,9 @@ function initSocket(io) {
 
       const state = connectedUsers.get(userId)
       if (state && state.roomId) {
-        socket.to('room:' + state.officeId + ':' + state.roomId).emit('room:player_left', { userId })
+        const channel = 'room:' + state.officeId + ':' + state.roomId
+        socket.to(channel).emit('room:player_left', { userId })
+        socket.to(channel).emit('voice:peer_left', { userId })
       }
       connectedUsers.delete(userId)
 
