@@ -4,6 +4,7 @@ import { useOfficeStore } from '../store/officeStore'
 import { useSocket } from '../hooks/useSocket'
 import OfficeMap from '../components/office/OfficeMap'
 import TaskPanel from '../components/tasks/TaskPanel'
+import OfficesPanel from '../components/admin/OfficesPanel'
 import api from '../api'
 import styles from './OfficePage.module.css'
 
@@ -242,7 +243,7 @@ useEffect(() => {
         {activeTab === 'admin' && (
           <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
             <div style={{display:'flex',borderBottom:'0.5px solid #D3D1C7'}}>
-              {['attendance','users','approvals'].map(t => (
+              {(user?.role === 'SUPERADMIN' ? ['attendance','users','approvals','offices'] : ['attendance','users','approvals']).map(t => (
                 <div key={t} onClick={() => setAdminTab(t)}
                   style={{flex:1,padding:'8px 0',fontSize:11,textAlign:'center',cursor:'pointer',
                     borderBottom: adminTab===t ? '2px solid #534AB7' : '2px solid transparent',
@@ -349,6 +350,9 @@ useEffect(() => {
                   </div>
                 ))}
               </div>
+            )}
+            {adminTab === 'offices' && user?.role === 'SUPERADMIN' && (
+              <OfficesPanel />
             )}
             {adminTab === 'users' && (
               <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
