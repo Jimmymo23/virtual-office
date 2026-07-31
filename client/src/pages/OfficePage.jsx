@@ -42,7 +42,19 @@ export default function OfficePage() {
 
  const [attendanceFrom, setAttendanceFrom] = useState('')
 const [attendanceTo, setAttendanceTo] = useState('')
-const updateUser = async (userId, data) => {
+const deleteUser = async (userId, name) => {
+    if (!window.confirm(`Delete user "${name}"? This cannot be undone.`)) return
+    try {
+      await api.delete(`/admin/users/${userId}`)
+      setAllUsers(prev => prev.filter(u => u.id !== userId))
+      setUserMsg('User deleted')
+      setTimeout(() => setUserMsg(''), 2000)
+    } catch (err) {
+      setUserMsg(err.response?.data?.error || 'Failed to delete user')
+    }
+  }
+
+  const updateUser = async (userId, data) => {
   try {
     const res = await api.patch(`/admin/users/${userId}`, data)
     setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...res.data.user } : u))
@@ -424,10 +436,18 @@ useEffect(() => {
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => setEditingUser(u.id)}
-                          style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',background:'transparent',cursor:'pointer',color:'#534AB7',marginLeft:31}}>
-                          edit
-                        </button>
+                        <div style={{display:'flex',gap:6,marginLeft:31}}>
+                          <button onClick={() => setEditingUser(u.id)}
+                            style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #D3D1C7',background:'transparent',cursor:'pointer',color:'#534AB7'}}>
+                            edit
+                          </button>
+                          {user?.role === 'SUPERADMIN' && (
+                            <button onClick={() => deleteUser(u.id, u.displayName)}
+                              style={{fontSize:10,padding:'3px 8px',borderRadius:6,border:'0.5px solid #F09595',background:'#FCEBEB',cursor:'pointer',color:'#A32D2D'}}>
+                              delete
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
