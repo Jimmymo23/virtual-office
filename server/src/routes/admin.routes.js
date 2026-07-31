@@ -213,4 +213,37 @@ router.post('/offices', requireAuth, requireRole('SUPERADMIN'), async (req, res)
   }
 })
 
+router.delete('/users/:id', requireAuth, requireRole('SUPERADMIN'), async (req, res) => {
+  try {
+    const target = await prisma.user.findUnique({ where: { id: req.params.id } })
+    if (!target) return res.status(404).json({ error: 'User not found' })
+    if (target.role === 'SUPERADMIN') {
+      return res.status(403).json({ error: 'Cannot delete a superadmin account' })
+    }
+    if (target.id === req.user.id) {
+      return res.status(403).json({ error: 'Cannot delete your own account' })
+    }
+    await prisma.user.delete({ where: { id: req.params.id } })
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error. This user may have related data (tasks, messages) that must be reassigned or removed first.' })
+  }
+})
+
+router.delete('/offices/:id', requireAuth, requireRole('SUPERADMIN'), async (req, res) => {
+  try {
+    const office = await prisma.office.findUnique({ where: { id: req.params.id }, include: { _count: { select: { users: true } } } })
+    if (!office) return res.status(404).json({ error: 'Office not found' })
+    if (office._count.users > 0) {
+      return res.status(400).json({ error: `Cannot delete office with ${office._count.users} user(s). Remove or reassign users first.` })
+    }
+    await prisma.office.delete({ where: { id: req.params.id } })
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 module.exports = router
