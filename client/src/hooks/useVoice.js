@@ -2,14 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import Peer from 'simple-peer'
 import { useOfficeStore } from '../store/officeStore'
 
-const VOICE_ROOMS = {
-  'meeting-1': 'ALWAYS_ON',
-  'kitchen': 'ALWAYS_ON',
-  'focus': 'PUSH_TO_TALK',
-  'reception': 'PUSH_TO_TALK',
-}
-
-export function useVoice(currentRoomId) {
+export function useVoice(currentRoomId, roomVoiceMode) {
   const socket = useOfficeStore(s => s.socket)
   const [connectedPeers, setConnectedPeers] = useState([])
   const [micError, setMicError] = useState('')
@@ -22,7 +15,7 @@ export function useVoice(currentRoomId) {
   const activeRoomRef = useRef(null)
   const voiceModeRef = useRef(null)
 
-  const roomMode = currentRoomId ? VOICE_ROOMS[currentRoomId] : null
+  const roomMode = currentRoomId ? roomVoiceMode : null
   const isVoiceRoom = roomMode === 'ALWAYS_ON' || roomMode === 'PUSH_TO_TALK'
   const isPushToTalk = roomMode === 'PUSH_TO_TALK'
 
@@ -108,7 +101,7 @@ export function useVoice(currentRoomId) {
       }
     }
 
-    if (isVoiceRoom && activeRoomRef.current !== currentRoomId) {
+    if (isVoiceRoom && (activeRoomRef.current !== currentRoomId || voiceModeRef.current !== roomMode)) {
       teardownVoice()
       setupVoiceForRoom(currentRoomId, roomMode)
     } else if (!isVoiceRoom && activeRoomRef.current) {
@@ -154,7 +147,6 @@ export function useVoice(currentRoomId) {
     }
   }, [socket, createPeer, cleanupPeer])
 
-  // Push-to-talk: hold spacebar to unmute the mic track
   useEffect(() => {
     if (!isPushToTalk) return
 

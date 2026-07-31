@@ -26,7 +26,7 @@ export default function OfficePage() {
   const [allUsers, setAllUsers] = useState([])
 
   useSocket()
-  const voice = useVoice(currentRoomId)
+  const voice = useVoice(currentRoomId, currentRoom?.voiceMode)
   const [editMode, setEditMode] = useState(false)
 
   useEffect(() => {
