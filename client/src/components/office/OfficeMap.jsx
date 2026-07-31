@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useOfficeStore } from '../../store/officeStore'
 import { getAvatarById } from '../avatars/avatarData'
+import RoomEditPanel from './RoomEditPanel'
+import CreateRoomModal from './CreateRoomModal'
 import api from '../../api'
 import styles from './OfficeMap.module.css'
 
@@ -45,29 +47,32 @@ function isBlocked(x, y) {
   return isWall(x, y) || isFurniture(x, y)
 }
 
-export default function OfficeMap({ onRoomChange }) {
+export default function OfficeMap({ onRoomChange, editMode }) {
   const user = useAuthStore(s => s.user)
   const { players, socket, currentRoomId, setCurrentRoom } = useOfficeStore()
 
   const [rooms, setRooms] = useState([])
   const [loadingRooms, setLoadingRooms] = useState(true)
+  const [editingRoom, setEditingRoom] = useState(null)
+  const [showCreateRoom, setShowCreateRoom] = useState(false)
   const roomsRef = useRef([])
 
   const posRef = useRef({ x: 8, y: 3 })
   const containerRef = useRef()
 
+  const fetchRooms = useCallback(() => {
+    return api.get('/rooms').then(res => {
+      setRooms(res.data.rooms)
+      roomsRef.current = res.data.rooms
+      setLoadingRooms(false)
+    }).catch(() => setLoadingRooms(false))
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    api.get('/rooms')
-      .then(res => {
-        if (cancelled) return
-        setRooms(res.data.rooms)
-        roomsRef.current = res.data.rooms
-        setLoadingRooms(false)
-      })
-      .catch(() => { if (!cancelled) setLoadingRooms(false) })
+    fetchRooms()
     return () => { cancelled = true }
-  }, [])
+  }, [fetchRooms])
 
   const getRoomAt = useCallback((x, y) => {
     return roomsRef.current.find(r =>
@@ -104,6 +109,7 @@ export default function OfficeMap({ onRoomChange }) {
 
   useEffect(() => {
     const handler = (e) => {
+      if (editMode) return
       const tag = document.activeElement?.tagName?.toLowerCase()
       if (['input', 'textarea', 'select'].includes(tag)) return
       if (e.code === 'Space') return
@@ -117,10 +123,28 @@ export default function OfficeMap({ onRoomChange }) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [move])
+  }, [move, editMode])
 
   const myPos = posRef.current
   const myAvatar = getAvatarById(user?.avatarId || 'avatar1')
+
+  const handleRoomSaved = (updatedRoom) => {
+    setRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r))
+    roomsRef.current = roomsRef.current.map(r => r.id === updatedRoom.id ? updatedRoom : r)
+    setEditingRoom(null)
+  }
+
+  const handleRoomDeleted = (roomId) => {
+    setRooms(prev => prev.filter(r => r.id !== roomId))
+    roomsRef.current = roomsRef.current.filter(r => r.id !== roomId)
+    setEditingRoom(null)
+  }
+
+  const handleRoomCreated = (newRoom) => {
+    setRooms(prev => [...prev, newRoom])
+    roomsRef.current = [...roomsRef.current, newRoom]
+    setShowCreateRoom(false)
+  }
 
   if (loadingRooms) {
     return (
@@ -134,6 +158,15 @@ export default function OfficeMap({ onRoomChange }) {
 
   return (
     <div className={styles.wrap} ref={containerRef} tabIndex={0}>
+      {editMode && (
+        <div style={{position:'absolute',top:8,right:8,zIndex:20}}>
+          <button onClick={() => setShowCreateRoom(true)}
+            style={{fontSize:11,padding:'6px 12px',borderRadius:8,border:'none',background:'#534AB7',color:'#fff',cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
+            + add room
+          </button>
+        </div>
+      )}
+
       <div className={styles.map} style={{ width: COLS * TILE, height: ROWS * TILE }}>
         <div className={styles.floor} />
 
@@ -141,25 +174,34 @@ export default function OfficeMap({ onRoomChange }) {
           <div
             key={room.id}
             className={styles.room}
+            onClick={() => editMode && setEditingRoom(room)}
             style={{
               left: room.zoneX * TILE, top: room.zoneY * TILE,
               width: room.zoneW * TILE, height: room.zoneH * TILE,
               background: room.color,
               border: `1.5px solid ${getBorderColor(room.color)}`,
+              cursor: editMode ? 'pointer' : 'default',
+              outline: editMode ? '2px dashed rgba(83,74,183,0.3)' : 'none',
+              outlineOffset: -2,
             }}
           >
             <span className={styles.roomLabel} style={{ color: getBorderColor(room.color) }}>{room.name}</span>
             {room.voiceMode === 'ALWAYS_ON' && <span className={styles.voiceBadge} style={{ background: getBorderColor(room.color) + '33', color: getBorderColor(room.color) }}>voice on</span>}
             {room.voiceMode === 'PUSH_TO_TALK' && <span className={styles.voiceBadge} style={{ background: getBorderColor(room.color) + '33', color: getBorderColor(room.color) }}>push to talk</span>}
             {room.voiceMode === 'MUTED' && <span className={styles.voiceBadge} style={{ background: '#F1EFE8', color: '#888780' }}>muted</span>}
+            {editMode && (
+              <span style={{position:'absolute',bottom:6,right:8,fontSize:9,color:getBorderColor(room.color),fontWeight:500}}>
+                click to edit
+              </span>
+            )}
           </div>
         ))}
 
-        {FURNITURE.map((f, i) => (
+        {!editMode && FURNITURE.map((f, i) => (
           <div key={i} className={`${styles.furniture} ${styles[f.type]}`} style={{ left: f.x * TILE, top: f.y * TILE }} />
         ))}
 
-        {Object.entries(players)
+        {!editMode && Object.entries(players)
           .filter(([id]) => id !== user?.id)
           .map(([id, p]) => {
             const av = getAvatarById(p.avatarId || 'avatar1')
@@ -173,17 +215,37 @@ export default function OfficeMap({ onRoomChange }) {
             )
           })}
 
-        <div id="my-avatar" className={`${styles.avatar} ${styles.me}`} style={{ left: myPos.x * TILE, top: myPos.y * TILE }}>
-          <div className={styles.avatarCircle} style={{ background: 'transparent' }}
-            dangerouslySetInnerHTML={{ __html: myAvatar.svg }} />
-          <div className={styles.avatarName}>{user?.displayName?.split(' ')[0]} (you)</div>
-          <div className={`${styles.statusDot} ${styles.online}`} />
-        </div>
+        {!editMode && (
+          <div id="my-avatar" className={`${styles.avatar} ${styles.me}`} style={{ left: myPos.x * TILE, top: myPos.y * TILE }}>
+            <div className={styles.avatarCircle} style={{ background: 'transparent' }}
+              dangerouslySetInnerHTML={{ __html: myAvatar.svg }} />
+            <div className={styles.avatarName}>{user?.displayName?.split(' ')[0]} (you)</div>
+            <div className={`${styles.statusDot} ${styles.online}`} />
+          </div>
+        )}
       </div>
 
-      <div className={styles.hint}>
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move
-      </div>
+      {!editMode && (
+        <div className={styles.hint}>
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move
+        </div>
+      )}
+
+      {editingRoom && (
+        <RoomEditPanel
+          room={editingRoom}
+          onClose={() => setEditingRoom(null)}
+          onSaved={handleRoomSaved}
+          onDeleted={handleRoomDeleted}
+        />
+      )}
+
+      {showCreateRoom && (
+        <CreateRoomModal
+          onClose={() => setShowCreateRoom(false)}
+          onCreated={handleRoomCreated}
+        />
+      )}
     </div>
   )
 }

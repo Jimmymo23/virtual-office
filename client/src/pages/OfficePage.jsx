@@ -23,6 +23,7 @@ export default function OfficePage() {
 
   useSocket()
   const voice = useVoice(currentRoomId)
+  const [editMode, setEditMode] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -188,11 +189,17 @@ useEffect(() => {
               mic blocked
             </span>
           )}
+          {(user?.role === 'SUPERADMIN' || user?.role === 'ADMIN') && (
+            <button onClick={() => setEditMode(m => !m)}
+              style={{fontSize:10,padding:'3px 10px',borderRadius:6,border: editMode ? 'none' : '0.5px solid #D3D1C7',background: editMode ? '#534AB7' : 'transparent',color: editMode ? '#fff' : '#2C2C2A',cursor:'pointer',fontWeight:500}}>
+              {editMode ? 'done editing' : '✏️ edit office'}
+            </button>
+          )}
           <div className={styles.spacer} />
           <span className={styles.topUser}>{user?.displayName}</span>
           <div className={styles.statusDot} style={{ background: '#639922' }} />
         </div>
-        <OfficeMap onRoomChange={setCurrentRoom} />
+        <OfficeMap onRoomChange={setCurrentRoom} editMode={editMode} />
       </main>
 
       <aside className={styles.rightPanel}>
