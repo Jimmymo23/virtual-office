@@ -49,7 +49,7 @@ export default function RegisterPage() {
       <div className={styles.page}>
         <div className={styles.card}>
           <div className={styles.logo}>⏳</div>
-          <h1 className={styles.title}>request sent</h1>
+          <h1 className={styles.title}>Request Sent</h1>
           <p className={styles.sub}>
             Your account is waiting for admin approval.<br/>
             You'll be able to log in once approved.
@@ -66,28 +66,28 @@ export default function RegisterPage() {
     <div className={styles.page}>
       <div className={styles.card} style={{maxWidth:440}}>
         <div className={styles.logo}>🏢</div>
-        <h1 className={styles.title}>join an office</h1>
-        <p className={styles.sub}>request access to your virtual office</p>
+        <h1 className={styles.title}>Join an Office</h1>
+        <p className={styles.sub}>Request access to your virtual office</p>
         <form onSubmit={handle} className={styles.form}>
-          <label className={styles.label}>office</label>
+          <label className={styles.label}>Office</label>
           <select className={styles.input} value={officeId} onChange={e => setOfficeId(e.target.value)} required
             style={{background:'#fff'}}>
-            <option value="">select your office...</option>
+            <option value="">Select your office...</option>
             {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
-          <label className={styles.label}>display name</label>
+          <label className={styles.label}>Display Name</label>
           <input className={styles.input} value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} placeholder="Ahmed Hassan" required />
-          <label className={styles.label}>username</label>
+          <label className={styles.label}>Username</label>
           <input className={styles.input} value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="ahmed.hassan" required />
-          <label className={styles.label}>password</label>
+          <label className={styles.label}>Password</label>
           <input className={styles.input} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" required />
-          <label className={styles.label}>confirm password</label>
+          <label className={styles.label}>Confirm Password</label>
           <input className={styles.input} type="password" value={form.confirm} onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} placeholder="••••••••" required />
           <div style={{marginTop:8}}>
             <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
           </div>
           {formError && <p className={styles.error}>{formError}</p>}
-          <button className={styles.btn} disabled={submitting}>{submitting ? 'sending request...' : 'request to join'}</button>
+          <button className={styles.btn} disabled={submitting}>{submitting ? 'Sending request...' : 'Request to Join'}</button>
         </form>
         <p className={styles.footer}>have an account? <Link to="/login">sign in</Link></p>
       </div>

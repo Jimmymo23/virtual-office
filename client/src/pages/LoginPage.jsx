@@ -21,19 +21,19 @@ export default function LoginPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}>🏢</div>
-        <h1 className={styles.title}>virtual office</h1>
-        <p className={styles.sub}>sign in to enter the office</p>
+        <h1 className={styles.title}>Virtual Office</h1>
+        <p className={styles.sub}>Sign in to enter the office</p>
         <form onSubmit={handle} className={styles.form}>
-          <label className={styles.label}>username</label>
+          <label className={styles.label}>Username</label>
           <input
             className={styles.input}
             value={form.username}
             onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-            placeholder="your username"
+            placeholder="Your username"
             autoComplete="username"
             required
           />
-          <label className={styles.label}>password</label>
+          <label className={styles.label}>Password</label>
           <input
             className={styles.input}
             type="password"
@@ -45,7 +45,7 @@ export default function LoginPage() {
           />
           {error && <p className={styles.error}>{error}</p>}
           <button className={styles.btn} disabled={submitting}>
-            {submitting ? 'signing in...' : 'enter office'}
+            {submitting ? 'Signing in...' : 'Enter Office'}
           </button>
         </form>
         <p className={styles.footer}>

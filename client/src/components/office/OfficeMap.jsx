@@ -31,6 +31,10 @@ const BORDER_COLORS = {
   '#E6F1FB': '#85B7EB',
 }
 
+function titleCase(str) {
+  return str.replace(/[-_]/g, ' ').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1))
+}
+
 function getBorderColor(fillColor) {
   return BORDER_COLORS[fillColor] || '#B4B2A9'
 }
@@ -185,7 +189,7 @@ export default function OfficeMap({ onRoomChange, editMode }) {
               outlineOffset: -2,
             }}
           >
-            <span className={styles.roomLabel} style={{ color: getBorderColor(room.color) }}>{room.name}</span>
+            <span className={styles.roomLabel} style={{ color: getBorderColor(room.color) }}>{titleCase(room.name)}</span>
             {room.voiceMode === 'ALWAYS_ON' && <span className={styles.voiceBadge} style={{ background: getBorderColor(room.color) + '33', color: getBorderColor(room.color) }}>voice on</span>}
             {room.voiceMode === 'PUSH_TO_TALK' && <span className={styles.voiceBadge} style={{ background: getBorderColor(room.color) + '33', color: getBorderColor(room.color) }}>push to talk</span>}
             {room.voiceMode === 'MUTED' && <span className={styles.voiceBadge} style={{ background: '#F1EFE8', color: '#888780' }}>muted</span>}

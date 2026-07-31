@@ -171,7 +171,7 @@ useEffect(() => {
       <main className={styles.main}>
         <div className={styles.topBar}>
           <span className={styles.roomPin}>📍</span>
-          <span className={styles.currentRoom}>{currentRoom?.name || 'office lobby'}</span>
+          <span className={styles.currentRoom}>{currentRoom ? titleCase(currentRoom.name) : 'Office Lobby'}</span>
           {currentRoom?.voiceMode && (
             <span className={styles.modeBadge}>{currentRoom.voiceMode === 'ALWAYS_ON' ? 'voice on' : currentRoom.voiceMode === 'MUTED' ? 'muted' : 'push-to-talk'}</span>
           )}
@@ -216,7 +216,7 @@ useEffect(() => {
         {activeTab === 'chat' && (
           <div className={styles.chatPanel}>
             <div className={styles.chatHead}>
-              {currentRoom ? currentRoom.name : 'no room'} · {inThisRoom.length} here
+              {currentRoom ? titleCase(currentRoom.name) : 'No Room'} · {inThisRoom.length} here
             </div>
             <div className={styles.messages}>
               {!currentRoomId && <div className={styles.emptyMsg}>walk into a room to start chatting</div>}
@@ -240,7 +240,7 @@ useEffect(() => {
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                placeholder={currentRoomId ? `message ${currentRoom?.name || 'room'}...` : 'enter a room to chat'}
+                placeholder={currentRoomId ? `Message ${currentRoom ? titleCase(currentRoom.name) : 'room'}...` : 'Enter a room to chat'}
                 disabled={!currentRoomId}
               />
             </div>
