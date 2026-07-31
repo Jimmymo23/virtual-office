@@ -1,20 +1,13 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useOfficeStore } from '../../store/officeStore'
 import { getAvatarById } from '../avatars/avatarData'
+import api from '../../api'
 import styles from './OfficeMap.module.css'
 
 const TILE = 48
 const COLS = 24
 const ROWS = 16
-
-const ROOM_DEFS = [
-  { id: 'open-desks', name: 'open desks', x: 1, y: 1, w: 10, h: 5, color: '#E1F5EE', border: '#5DCAA5', voiceMode: 'MUTED' },
-  { id: 'meeting-1', name: 'meeting room 1', x: 1, y: 7, w: 10, h: 7, color: '#FAEEDA', border: '#EF9F27', voiceMode: 'ALWAYS_ON', hasVideo: true, lockable: true },
-  { id: 'kitchen', name: 'kitchen', x: 13, y: 1, w: 5, h: 6, color: '#F1EFE8', border: '#B4B2A9', voiceMode: 'ALWAYS_ON' },
-  { id: 'focus', name: 'focus room', x: 13, y: 8, w: 5, h: 6, color: '#EEEDFE', border: '#AFA9EC', voiceMode: 'MUTED' },
-  { id: 'reception', name: 'reception', x: 19, y: 1, w: 4, h: 13, color: '#E6F1FB', border: '#85B7EB', voiceMode: 'PUSH_TO_TALK' },
-]
 
 const FURNITURE = [
   { type: 'desk', x: 2, y: 2 }, { type: 'desk', x: 4, y: 2 }, { type: 'desk', x: 6, y: 2 },
@@ -28,8 +21,16 @@ const FURNITURE = [
   { type: 'desk', x: 20, y: 3 }, { type: 'desk', x: 21, y: 3 },
 ]
 
-function getRoomAt(x, y) {
-  return ROOM_DEFS.find(r => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) || null
+const BORDER_COLORS = {
+  '#E1F5EE': '#5DCAA5',
+  '#FAEEDA': '#EF9F27',
+  '#F1EFE8': '#B4B2A9',
+  '#EEEDFE': '#AFA9EC',
+  '#E6F1FB': '#85B7EB',
+}
+
+function getBorderColor(fillColor) {
+  return BORDER_COLORS[fillColor] || '#B4B2A9'
 }
 
 function isWall(x, y) {
@@ -47,8 +48,33 @@ function isBlocked(x, y) {
 export default function OfficeMap({ onRoomChange }) {
   const user = useAuthStore(s => s.user)
   const { players, socket, currentRoomId, setCurrentRoom } = useOfficeStore()
+
+  const [rooms, setRooms] = useState([])
+  const [loadingRooms, setLoadingRooms] = useState(true)
+  const roomsRef = useRef([])
+
   const posRef = useRef({ x: 8, y: 3 })
   const containerRef = useRef()
+
+  useEffect(() => {
+    let cancelled = false
+    api.get('/rooms')
+      .then(res => {
+        if (cancelled) return
+        setRooms(res.data.rooms)
+        roomsRef.current = res.data.rooms
+        setLoadingRooms(false)
+      })
+      .catch(() => { if (!cancelled) setLoadingRooms(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const getRoomAt = useCallback((x, y) => {
+    return roomsRef.current.find(r =>
+      x >= r.zoneX && x < r.zoneX + r.zoneW &&
+      y >= r.zoneY && y < r.zoneY + r.zoneH
+    ) || null
+  }, [])
 
   const move = useCallback((dx, dy) => {
     if (!socket) return
@@ -56,25 +82,31 @@ export default function OfficeMap({ onRoomChange }) {
     const nx = x + dx
     const ny = y + dy
     if (isBlocked(nx, ny)) return
+
     posRef.current = { x: nx, y: ny }
+
     const room = getRoomAt(nx, ny)
     const roomId = room?.id || null
+
     socket.emit('player:move', { x: nx, y: ny, roomId })
+
     if (roomId !== currentRoomId) {
       setCurrentRoom(roomId)
       onRoomChange?.(room)
     }
+
     const el = document.getElementById('my-avatar')
     if (el) {
       el.style.left = `${nx * TILE}px`
       el.style.top = `${ny * TILE}px`
     }
-  }, [socket, currentRoomId, setCurrentRoom, onRoomChange])
+  }, [socket, currentRoomId, setCurrentRoom, onRoomChange, getRoomAt])
 
   useEffect(() => {
     const handler = (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase()
       if (['input', 'textarea', 'select'].includes(tag)) return
+      if (e.code === 'Space') return
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)) {
         e.preventDefault()
         if (e.key === 'ArrowUp' || e.key === 'w') move(0, -1)
@@ -90,16 +122,35 @@ export default function OfficeMap({ onRoomChange }) {
   const myPos = posRef.current
   const myAvatar = getAvatarById(user?.avatarId || 'avatar1')
 
+  if (loadingRooms) {
+    return (
+      <div className={styles.wrap}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:12,color:'#888780'}}>
+          loading office...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.wrap} ref={containerRef} tabIndex={0}>
       <div className={styles.map} style={{ width: COLS * TILE, height: ROWS * TILE }}>
         <div className={styles.floor} />
 
-        {ROOM_DEFS.map(room => (
-          <div key={room.id} className={styles.room}
-            style={{ left: room.x * TILE, top: room.y * TILE, width: room.w * TILE, height: room.h * TILE, background: room.color, border: `1.5px solid ${room.border}` }}>
-            <span className={styles.roomLabel} style={{ color: room.border }}>{room.name}</span>
-            {room.voiceMode === 'ALWAYS_ON' && <span className={styles.voiceBadge} style={{ background: room.border + '33', color: room.border }}>voice on</span>}
+        {rooms.map(room => (
+          <div
+            key={room.id}
+            className={styles.room}
+            style={{
+              left: room.zoneX * TILE, top: room.zoneY * TILE,
+              width: room.zoneW * TILE, height: room.zoneH * TILE,
+              background: room.color,
+              border: `1.5px solid ${getBorderColor(room.color)}`,
+            }}
+          >
+            <span className={styles.roomLabel} style={{ color: getBorderColor(room.color) }}>{room.name}</span>
+            {room.voiceMode === 'ALWAYS_ON' && <span className={styles.voiceBadge} style={{ background: getBorderColor(room.color) + '33', color: getBorderColor(room.color) }}>voice on</span>}
+            {room.voiceMode === 'PUSH_TO_TALK' && <span className={styles.voiceBadge} style={{ background: getBorderColor(room.color) + '33', color: getBorderColor(room.color) }}>push to talk</span>}
             {room.voiceMode === 'MUTED' && <span className={styles.voiceBadge} style={{ background: '#F1EFE8', color: '#888780' }}>muted</span>}
           </div>
         ))}
