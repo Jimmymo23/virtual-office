@@ -5,6 +5,8 @@ import { useOfficeStore } from '../store/officeStore'
 const VOICE_ROOMS = {
   'meeting-1': 'ALWAYS_ON',
   'kitchen': 'ALWAYS_ON',
+  'focus': 'PUSH_TO_TALK',
+  'reception': 'PUSH_TO_TALK',
 }
 
 export function useVoice(currentRoomId) {
@@ -12,13 +14,17 @@ export function useVoice(currentRoomId) {
   const [connectedPeers, setConnectedPeers] = useState([])
   const [micError, setMicError] = useState('')
   const [isMuted, setIsMuted] = useState(false)
+  const [isTalking, setIsTalking] = useState(false)
 
   const localStreamRef = useRef(null)
   const peersRef = useRef(new Map())
   const audioElsRef = useRef(new Map())
   const activeRoomRef = useRef(null)
+  const voiceModeRef = useRef(null)
 
-  const isVoiceRoom = currentRoomId && VOICE_ROOMS[currentRoomId] === 'ALWAYS_ON'
+  const roomMode = currentRoomId ? VOICE_ROOMS[currentRoomId] : null
+  const isVoiceRoom = roomMode === 'ALWAYS_ON' || roomMode === 'PUSH_TO_TALK'
+  const isPushToTalk = roomMode === 'PUSH_TO_TALK'
 
   const cleanupPeer = useCallback((userId) => {
     const peer = peersRef.current.get(userId)
@@ -47,7 +53,9 @@ export function useVoice(currentRoomId) {
       localStreamRef.current = null
     }
     activeRoomRef.current = null
+    voiceModeRef.current = null
     setConnectedPeers([])
+    setIsTalking(false)
   }, [socket, cleanupPeer])
 
   const createPeer = useCallback((targetUserId, initiator, stream) => {
@@ -81,13 +89,19 @@ export function useVoice(currentRoomId) {
 
     let cancelled = false
 
-    async function setupVoiceForRoom(roomId) {
+    async function setupVoiceForRoom(roomId, mode) {
       try {
         setMicError('')
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+
+        if (mode === 'PUSH_TO_TALK') {
+          stream.getAudioTracks().forEach(t => { t.enabled = false })
+        }
+
         localStreamRef.current = stream
         activeRoomRef.current = roomId
+        voiceModeRef.current = mode
         socket.emit('voice:join', { roomId })
       } catch (err) {
         setMicError('Microphone access denied or unavailable')
@@ -96,13 +110,13 @@ export function useVoice(currentRoomId) {
 
     if (isVoiceRoom && activeRoomRef.current !== currentRoomId) {
       teardownVoice()
-      setupVoiceForRoom(currentRoomId)
+      setupVoiceForRoom(currentRoomId, roomMode)
     } else if (!isVoiceRoom && activeRoomRef.current) {
       teardownVoice()
     }
 
     return () => { cancelled = true }
-  }, [currentRoomId, isVoiceRoom, socket, teardownVoice])
+  }, [currentRoomId, isVoiceRoom, roomMode, socket, teardownVoice])
 
   useEffect(() => {
     if (!socket) return
@@ -140,19 +154,51 @@ export function useVoice(currentRoomId) {
     }
   }, [socket, createPeer, cleanupPeer])
 
+  // Push-to-talk: hold spacebar to unmute the mic track
+  useEffect(() => {
+    if (!isPushToTalk) return
+
+    const onKeyDown = (e) => {
+      const tag = document.activeElement && document.activeElement.tagName
+        ? document.activeElement.tagName.toLowerCase() : ''
+      if (['input', 'textarea', 'select'].includes(tag)) return
+      if (e.code !== 'Space' || e.repeat) return
+      if (!localStreamRef.current) return
+      e.preventDefault()
+      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true })
+      setIsTalking(true)
+    }
+
+    const onKeyUp = (e) => {
+      if (e.code !== 'Space') return
+      if (!localStreamRef.current) return
+      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false })
+      setIsTalking(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [isPushToTalk])
+
   useEffect(() => {
     return () => { teardownVoice() }
   }, [teardownVoice])
 
   const toggleMute = useCallback(() => {
-    if (!localStreamRef.current) return
+    if (!localStreamRef.current || isPushToTalk) return
     const nextMuted = !isMuted
     localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !nextMuted })
     setIsMuted(nextMuted)
-  }, [isMuted])
+  }, [isMuted, isPushToTalk])
 
   return {
     isVoiceRoom,
+    isPushToTalk,
+    isTalking,
     inVoiceCall: !!localStreamRef.current,
     connectedPeers,
     peerCount: connectedPeers.length,

@@ -170,12 +170,17 @@ useEffect(() => {
           {currentRoom?.voiceMode && (
             <span className={styles.modeBadge}>{currentRoom.voiceMode === 'ALWAYS_ON' ? 'voice on' : currentRoom.voiceMode === 'MUTED' ? 'muted' : 'push-to-talk'}</span>
           )}
-          {voice.isVoiceRoom && voice.inVoiceCall && (
+          {voice.isVoiceRoom && voice.inVoiceCall && !voice.isPushToTalk && (
             <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,background:'#EAF3DE',color:'#27500A',fontWeight:500,display:'flex',alignItems:'center',gap:4}}>
               🎙️ {voice.peerCount} in call
               <button onClick={voice.toggleMute} style={{border:'none',background:'none',cursor:'pointer',fontSize:10,color:'#27500A',padding:0}}>
                 {voice.isMuted ? '🔇' : '🔊'}
               </button>
+            </span>
+          )}
+          {voice.isVoiceRoom && voice.inVoiceCall && voice.isPushToTalk && (
+            <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,background: voice.isTalking ? '#EAF3DE' : '#F1EFE8',color: voice.isTalking ? '#27500A' : '#888780',fontWeight:500,display:'flex',alignItems:'center',gap:4,transition:'background 0.1s'}}>
+              {voice.isTalking ? '🎙️ talking' : '🎤 hold SPACE to talk'} · {voice.peerCount} here
             </span>
           )}
           {voice.isVoiceRoom && voice.micError && (
