@@ -23,7 +23,7 @@
 .avatar {
   width: 32px; height: 32px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 500; margin-bottom: 6px;
+  font-size: 13px; font-weight: 500; margin-bottom: 6px;
 }
 
 .navBtn {
@@ -54,10 +54,10 @@
 
 .lpHead { padding: 12px 12px 8px; border-bottom: 0.5px solid #D3D1C7; }
 .workspaceName { font-size: 13px; font-weight: 500; color: #2C2C2A; }
-.onlineCount { font-size: 10px; color: #888780; margin-top: 1px; }
+.onlineCount { font-size: 12px; color: #888780; margin-top: 1px; }
 
 .secLabel {
-  font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
   color: #888780; padding: 8px 12px 3px; font-weight: 500;
 }
 
@@ -71,8 +71,8 @@
 .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
 .roomInfo { flex: 1; min-width: 0; }
-.roomName { font-size: 11px; color: #2C2C2A; }
-.roomMeta { font-size: 9px; color: #888780; }
+.roomName { font-size: 13px; color: #2C2C2A; }
+.roomMeta { font-size: 13px; color: #888780; }
 
 .personRow { display: flex; align-items: center; gap: 6px; padding: 4px 12px; }
 .personAvatar {
@@ -80,17 +80,17 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 8px; font-weight: 500; flex-shrink: 0;
 }
-.personName { font-size: 11px; color: #2C2C2A; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.personName { font-size: 13px; color: #2C2C2A; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .clockWrap { margin-top: auto; padding: 10px 12px; border-top: 0.5px solid #D3D1C7; }
 .clockRow { display: flex; justify-content: space-between; margin-bottom: 7px; }
-.clockLabel { font-size: 11px; color: #888780; }
-.clockTime { font-size: 11px; font-weight: 500; color: #2C2C2A; }
+.clockLabel { font-size: 13px; color: #888780; }
+.clockTime { font-size: 13px; font-weight: 500; color: #2C2C2A; }
 .clockOut {
   width: 100%; padding: 5px;
   background: #FCEBEB; color: #A32D2D;
   border: 0.5px solid #F09595; border-radius: 8px;
-  font-size: 10px; font-weight: 500; cursor: pointer; font-family: inherit;
+  font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;
 }
 
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -104,11 +104,11 @@
 .roomPin { font-size: 14px; }
 .currentRoom { font-size: 12px; font-weight: 500; color: #2C2C2A; }
 .modeBadge {
-  font-size: 9px; padding: 2px 8px; border-radius: 20px;
+  font-size: 13px; padding: 2px 8px; border-radius: 20px;
   background: #F1EFE8; color: #888780; font-weight: 500;
 }
 .spacer { flex: 1; }
-.topUser { font-size: 11px; color: #888780; }
+.topUser { font-size: 13px; color: #888780; }
 .statusDot { width: 8px; height: 8px; border-radius: 50%; }
 
 .rightPanel {
@@ -120,7 +120,7 @@
 
 .tabs { display: flex; border-bottom: 0.5px solid #D3D1C7; }
 .tab {
-  flex: 1; padding: 9px 0; font-size: 11px; text-align: center;
+  flex: 1; padding: 9px 0; font-size: 13px; text-align: center;
   cursor: pointer; color: #888780; border-bottom: 2px solid transparent;
 }
 .tab:hover { background: #F1EFE8; }
@@ -131,12 +131,12 @@
 .chatHead {
   padding: 6px 12px;
   border-bottom: 0.5px solid #D3D1C7;
-  font-size: 10px; color: #888780;
+  font-size: 12px; color: #888780;
 }
 
 .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; padding: 4px 0; }
 
-.emptyMsg { font-size: 11px; color: #888780; text-align: center; padding: 2rem 1rem; }
+.emptyMsg { font-size: 13px; color: #888780; text-align: center; padding: 2rem 1rem; }
 
 .msg { display: flex; gap: 7px; padding: 6px 10px; }
 .msg:hover { background: #F1EFE8; }
@@ -147,9 +147,9 @@
 }
 .msgBody { flex: 1; min-width: 0; }
 .msgMeta { display: flex; align-items: baseline; gap: 5px; }
-.msgName { font-size: 11px; font-weight: 500; color: #2C2C2A; }
-.msgTime { font-size: 9px; color: #888780; margin-left: auto; }
-.msgText { font-size: 11px; color: #5F5E5A; line-height: 1.4; margin-top: 1px; word-break: break-word; }
+.msgName { font-size: 13px; font-weight: 500; color: #2C2C2A; }
+.msgTime { font-size: 13px; color: #888780; margin-left: auto; }
+.msgText { font-size: 13px; color: #5F5E5A; line-height: 1.4; margin-top: 1px; word-break: break-word; }
 
 .chatInput { padding: 8px 10px; border-top: 0.5px solid #D3D1C7; }
 .chatInput input {
@@ -158,7 +158,7 @@
   border: 0.5px solid #D3D1C7;
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: 13px;
   color: #2C2C2A;
   outline: none;
   font-family: inherit;

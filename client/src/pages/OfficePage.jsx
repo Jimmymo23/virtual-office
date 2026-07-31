@@ -9,6 +9,10 @@ import OfficesPanel from '../components/admin/OfficesPanel'
 import api from '../api'
 import styles from './OfficePage.module.css'
 
+function titleCase(str) {
+  return str.replace(/[-_]/g, ' ').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1))
+}
+
 export default function OfficePage() {
   const user = useAuthStore(s => s.user)
   const logout = useAuthStore(s => s.logout)
@@ -103,14 +107,14 @@ useEffect(() => {
           <div className={styles.avatar} style={{ background: user?.avatarColor, color: user?.avatarTextColor }}>
             {(user?.displayName || 'U').slice(0, 2).toUpperCase()}
           </div>
-          <div className={`${styles.navBtn} ${styles.active}`} title="office">🏢</div>
-          <div className={styles.navBtn} title="tasks">✅</div>
-          <div className={styles.navBtn} title="messages">💬</div>
-          <div className={styles.navBtn} title="people">👥</div>
+          <div className={styles.navBtn} title="Office" onClick={() => setActiveTab('chat')} style={activeTab==='chat'||activeTab==='people'?{background:'#EEEDFE'}:{}}>🏢</div>
+          <div className={styles.navBtn} title="Tasks" onClick={() => setActiveTab('tasks')} style={activeTab==='tasks'?{background:'#EEEDFE'}:{}}>✅</div>
+          <div className={styles.navBtn} title="Messages" onClick={() => setActiveTab('chat')} style={activeTab==='chat'?{background:'#EEEDFE'}:{}}>💬</div>
+          <div className={styles.navBtn} title="People" onClick={() => setActiveTab('people')} style={activeTab==='people'?{background:'#EEEDFE'}:{}}>👥</div>
         </div>
         <div className={styles.sideBot}>
-          <div className={styles.navBtn} title="settings">⚙️</div>
-          <button className={styles.logoutBtn} onClick={handleLogout} title="logout">↩</button>
+          <div className={styles.navBtn} title="Settings" onClick={() => setActiveTab('admin')} style={activeTab==='admin'?{background:'#EEEDFE'}:{}}>⚙️</div>
+          <button className={styles.logoutBtn} onClick={handleLogout} title="Log Out">🚪</button>
         </div>
       </aside>
 
@@ -205,7 +209,7 @@ useEffect(() => {
       <aside className={styles.rightPanel}>
         <div className={styles.tabs}>
           {tabs.map(t => (
-            <div key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ''}`} onClick={() => setActiveTab(t)}>{t}</div>
+            <div key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ''}`} onClick={() => setActiveTab(t)}>{titleCase(t)}</div>
           ))}
         </div>
 
@@ -276,7 +280,7 @@ useEffect(() => {
                     borderBottom: adminTab===t ? '2px solid #534AB7' : '2px solid transparent',
                     color: adminTab===t ? '#534AB7' : '#888780',
                     fontWeight: adminTab===t ? 500 : 400}}>
-                  {t}
+                  {titleCase(t)}
                 </div>
               ))}
             </div>
